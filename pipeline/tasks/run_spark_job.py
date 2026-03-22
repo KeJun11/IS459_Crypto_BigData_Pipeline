@@ -32,11 +32,8 @@ def run_spark_job() -> str:
     log.info("═══ Task 4: run_spark_job  START ═══")
     emr = get_emr_client()
 
-    # Pass enabled sources as a comma-separated arg so the Spark script
-    sources_arg = ",".join(settings.ENABLED_SOURCES)
-
     step = {
-        "Name": "transform-multi-source-klines",
+        "Name": "transform-binance-klines",
         "ActionOnFailure": "CONTINUE",
         "HadoopJarStep": {
             "Jar": "command-runner.jar",
@@ -48,13 +45,11 @@ def run_spark_job() -> str:
                 settings.SPARK_SCRIPT_S3_PATH,
                 "--source-db", settings.GLUE_DATABASE,
                 "--output-bucket", settings.S3_BUCKET_RAW,
-                "--sources", sources_arg,
             ],
         },
     }
 
     log.info("Submitting step to EMR cluster %s", settings.EMR_CLUSTER_ID)
-    log.info("Sources: %s", sources_arg)
     response = emr.add_job_flow_steps(
         JobFlowId=settings.EMR_CLUSTER_ID,
         Steps=[step],

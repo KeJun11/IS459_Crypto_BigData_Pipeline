@@ -47,27 +47,13 @@ BINANCE_SYMBOLS = [
 ]
 
 # Kline interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d, etc.
-BINANCE_INTERVAL = "1d"
-
-# Historical backfill period (in days)
-BACKFILL_DAYS = 3 * 365  # 3 years
+BINANCE_INTERVAL = "1m"
 
 # Max klines per request (Binance caps at 1000)
 BINANCE_LIMIT = 1000
 
-# ──────────────────────────────────────────────
-# MEXC API (free, no key required for public)
-# Same 12-field kline format as Binance
-# ──────────────────────────────────────────────
-MEXC_BASE_URL = "https://api.mexc.com/api/v3"
-MEXC_LIMIT = 500
-
-# MEXC uses same symbol format as Binance (e.g. BTCUSDT)
-# We pull the same 50 symbols from MEXC for cross-exchange comparison
-MEXC_SYMBOLS = BINANCE_SYMBOLS.copy()
-
-# Data sources to pull from (toggle on/off)
-ENABLED_SOURCES = ["binance", "mexc"]
+# Start date for kline pull (2025-09-21)
+BACKFILL_START_DATE = "2025-09-21"
 
 # Column names matching Binance kline response (index 0–11)
 KLINE_COLUMNS = [
