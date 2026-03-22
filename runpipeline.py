@@ -31,7 +31,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # ── Task 1: Pull klines from Binance ─────────────────────────────────
     data = pull_api_data()
 
     if args.dry_run:
@@ -45,13 +44,10 @@ def main():
                 print(f"  {symbol}: EMPTY")
         return
 
-    # ── Task 2: Upload raw JSON to S3 ────────────────────────────────────
     uploaded_keys = store_raw_to_s3(data)
 
-    # ── Task 3: Ensure Glue catalog is up-to-date ────────────────────────
     update_catalog()
 
-    # ── Task 4: Kick off Spark transform on EMR ──────────────────────────
     state = run_spark_job()
 
     if state != "COMPLETED":

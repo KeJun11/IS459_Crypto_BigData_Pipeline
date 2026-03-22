@@ -22,16 +22,22 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-db", required=True, help="Glue database name")
     parser.add_argument("--output-bucket", required=True, help="S3 bucket for cleaned data")
+    parser.add_argument("--sources", required=True, help="Comma-separated list of sources (e.g. binance,mexc)")
     return parser.parse_args()
 
 
-def clean_klines(spark, db: str, output_bucket: str):
+def clean_klines(spark, db: str, output_bucket: str, source_name: str):
     """
-    Read raw_binance_klines, cast types, convert timestamps, write Parquet.
+    Read raw_<source>_klines, cast types, convert timestamps, write Parquet.
     """
-    table = f"{db}.raw_binance_klines"
+    table = f"{db}.raw_{source_name}_klines"
     print(f"Reading table: {table}")
-    df = spark.table(table)
+
+    try:
+        df = spark.table(table)
+    except Exception as e:
+        print(f"✗ {source_name}: could not read table – {e}")
+        return
 
     cleaned = df.select(
         # Convert epoch-ms → UTC timestamp
@@ -49,14 +55,15 @@ def clean_klines(spark, db: str, output_bucket: str):
         F.col("taker_buy_base_asset_volume").cast(DoubleType()).alias("taker_buy_base_asset_volume"),
         F.col("taker_buy_quote_asset_volume").cast(DoubleType()).alias("taker_buy_quote_asset_volume"),
 
-        # Keep symbol for partitioning
+        # Keep symbol and source for partitioning
         F.col("symbol"),
+        F.col("source"),
 
         # Add ingestion metadata
         F.current_date().alias("ingestion_date"),
     )
 
-    output_path = f"s3://{output_bucket}/cleaned/binance_klines/"
+    output_path = f"s3://{output_bucket}/cleaned/{source_name}_klines/"
     print(f"Writing to: {output_path}")
 
     cleaned.write \
@@ -65,26 +72,33 @@ def clean_klines(spark, db: str, output_bucket: str):
         .parquet(output_path)
 
     row_count = cleaned.count()
-    print(f"✓ binance_klines: {row_count} rows written")
+    print(f"✓ {source_name}: {row_count} rows written")
 
 
 def main():
     args = parse_args()
+    sources = [s.strip() for s in args.sources.split(",")]
 
     spark = (
         SparkSession.builder
-        .appName("binance-klines-transform")
+        .appName("multi-source-klines-transform")
         .enableHiveSupport()
         .getOrCreate()
     )
+    spark.conf.set("mapreduce.input.fileinputformat.input.dir.recursive", "true")
 
     print(f"Source DB     : {args.source_db}")
     print(f"Output bucket : {args.output_bucket}")
+    print(f"Sources       : {sources}")
 
-    clean_klines(spark, args.source_db, args.output_bucket)
+    for source_name in sources:
+        print(f"\n{'='*40}")
+        print(f"Processing: {source_name}")
+        print(f"{'='*40}")
+        clean_klines(spark, args.source_db, args.output_bucket, source_name)
 
     spark.stop()
-    print("Transform complete.")
+    print("\nAll transforms complete.")
 
 
 if __name__ == "__main__":

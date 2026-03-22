@@ -7,58 +7,67 @@ Replace placeholders with real values once AWS is provisioned.
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Load .env from project root (one level up from config/)
 load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
-# ──────────────────────────────────────────────
-# AWS Credentials (placeholder – swap when ready)
-# ──────────────────────────────────────────────
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "YOUR_AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "YOUR_AWS_SECRET_ACCESS_KEY")
+
+
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
-# ──────────────────────────────────────────────
-# S3 (placeholder – swap when bucket is created)
-# ──────────────────────────────────────────────
-S3_BUCKET_RAW = os.getenv("S3_BUCKET_RAW", "your-project-raw-data-bucket")
+
+S3_BUCKET_RAW = os.getenv("S3_BUCKET_RAW")
 S3_RAW_PREFIX = "raw/"
 
-# ──────────────────────────────────────────────
-# Glue Catalog
-# ──────────────────────────────────────────────
-GLUE_DATABASE = os.getenv("GLUE_DATABASE", "your_project_db")
 
-# ──────────────────────────────────────────────
-# EMR / Spark
-# ──────────────────────────────────────────────
-EMR_CLUSTER_ID = os.getenv("EMR_CLUSTER_ID", "j-XXXXXXXXXXXXX")
+GLUE_DATABASE = os.getenv("GLUE_DATABASE")
+
+
+EMR_CLUSTER_ID = os.getenv("EMR_CLUSTER_ID")
 SPARK_SCRIPT_S3_PATH = os.getenv(
     "SPARK_SCRIPT_S3_PATH",
     f"s3://{S3_BUCKET_RAW}/scripts/transform.py",
 )
 
-# ──────────────────────────────────────────────
-# Binance API (free, no key required)
-# ──────────────────────────────────────────────
+
 BINANCE_BASE_URL = "https://api.binance.com/api/v3"
 
-# Trading pairs to pull (against USDT)
 BINANCE_SYMBOLS = [
-    "BTCUSDT",
-    "ETHUSDT",
-    "SOLUSDT",
-    "BNBUSDT",
-    "XRPUSDT",
-    "ADAUSDT",
-    "DOGEUSDT",
-    "AVAXUSDT",
-    "DOTUSDT",
-    "LINKUSDT",
+    "BTCUSDT",  "ETHUSDT",  "BNBUSDT",  "XRPUSDT",  "SOLUSDT",
+    "ADAUSDT",  "DOGEUSDT", "TRXUSDT",  "AVAXUSDT", "LINKUSDT",
+    "DOTUSDT",  "MATICUSDT","SHIBUSDT", "LTCUSDT",  "BCHUSDT",
+    "UNIUSDT",  "ATOMUSDT", "XLMUSDT",  "NEARUSDT", "ICPUSDT",
+    "APTUSDT",  "FILUSDT",  "VETUSDT",  "HBARUSDT", "MANAUSDT",
+    "ALGOUSDT", "QNTUSDT",  "AAVEUSDT", "EGLDUSDT", "SANDUSDT",
+    "EOSUSDT",  "THETAUSDT","AXSUSDT",  "FTMUSDT",  "RUNEUSDT",
+    "GALAUSDT", "FLOWUSDT", "XTZUSDT",  "CHZUSDT",  "ZILUSDT",
+    "ENJUSDT",  "BATUSDT",  "COMPUSDT", "SNXUSDT",  "MKRUSDT",
+    "YFIUSDT",  "SUSHIUSDT","1INCHUSDT","CRVUSDT",  "LRCUSDT",
 ]
 
 # Kline interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d, etc.
-BINANCE_INTERVAL = "1m"
+BINANCE_INTERVAL = "1d"
+
+# Historical backfill period (in days)
+BACKFILL_DAYS = 3 * 365  # 3 years
 
 # Max klines per request (Binance caps at 1000)
 BINANCE_LIMIT = 1000
+
+# ──────────────────────────────────────────────
+# MEXC API (free, no key required for public)
+# Same 12-field kline format as Binance
+# ──────────────────────────────────────────────
+MEXC_BASE_URL = "https://api.mexc.com/api/v3"
+MEXC_LIMIT = 500
+
+# MEXC uses same symbol format as Binance (e.g. BTCUSDT)
+# We pull the same 50 symbols from MEXC for cross-exchange comparison
+MEXC_SYMBOLS = BINANCE_SYMBOLS.copy()
+
+# Data sources to pull from (toggle on/off)
+ENABLED_SOURCES = ["binance", "mexc"]
 
 # Column names matching Binance kline response (index 0–11)
 KLINE_COLUMNS = [
@@ -73,5 +82,4 @@ KLINE_COLUMNS = [
     "number_of_trades",                # 8
     "taker_buy_base_asset_volume",     # 9
     "taker_buy_quote_asset_volume",    # 10
-    "ignore",                          # 11
 ]

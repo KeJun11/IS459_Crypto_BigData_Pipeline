@@ -11,8 +11,8 @@ at settings.SPARK_SCRIPT_S3_PATH before running this task.
 import time
 
 from pipeline.config import settings
-from pipeline.utils.aws_helpers import get_emr_client
 from pipeline.utils.logger import get_logger
+from pipeline.utils.aws_helpers import get_emr_client
 
 log = get_logger("task4.run_spark_job")
 
@@ -32,8 +32,11 @@ def run_spark_job() -> str:
     log.info("═══ Task 4: run_spark_job  START ═══")
     emr = get_emr_client()
 
+    # Pass enabled sources as a comma-separated arg so the Spark script
+    sources_arg = ",".join(settings.ENABLED_SOURCES)
+
     step = {
-        "Name": "transform-binance-klines",
+        "Name": "transform-multi-source-klines",
         "ActionOnFailure": "CONTINUE",
         "HadoopJarStep": {
             "Jar": "command-runner.jar",
@@ -45,11 +48,13 @@ def run_spark_job() -> str:
                 settings.SPARK_SCRIPT_S3_PATH,
                 "--source-db", settings.GLUE_DATABASE,
                 "--output-bucket", settings.S3_BUCKET_RAW,
+                "--sources", sources_arg,
             ],
         },
     }
 
     log.info("Submitting step to EMR cluster %s", settings.EMR_CLUSTER_ID)
+    log.info("Sources: %s", sources_arg)
     response = emr.add_job_flow_steps(
         JobFlowId=settings.EMR_CLUSTER_ID,
         Steps=[step],
@@ -57,7 +62,6 @@ def run_spark_job() -> str:
     step_id = response["StepIds"][0]
     log.info("Step submitted  ➜  %s", step_id)
 
-    # ── Poll for completion ──────────────────────────────────────────────
     for i in range(MAX_POLLS):
         desc = emr.describe_step(
             ClusterId=settings.EMR_CLUSTER_ID,
