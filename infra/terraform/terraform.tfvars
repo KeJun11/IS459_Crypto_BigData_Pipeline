@@ -1,0 +1,22 @@
+project_name                   = "is459-crypto"
+environment                    = "dev"
+aws_region                     = "us-east-1"
+s3_bucket_name                 = "is459-crypto-datalake"
+kinesis_stream_name            = "crypto-ohlcv-1m"
+firehose_delivery_stream_name  = "crypto-ohlcv-1m-firehose"
+glue_registry_name             = "crypto-schema-registry"
+glue_schema_name               = "kline-1m"
+ec2_instance_type              = "t3.xlarge"
+root_volume_size_gb            = 40
+ec2_swap_size_gb               = 4
+ec2_docker_data_volume_size_gb = 80
+ec2_bootstrap_repo_url         = "https://github.com/KeJun11/IS459_Crypto_BigData_Pipeline.git"
+ec2_bootstrap_repo_ref         = "main"
+ec2_bootstrap_repo_path        = "/opt/is459-crypto-bigdata-pipeline"
+
+admin_cidrs = [
+  "210.10.6.10/32",
+  "202.161.35.16/32"
+]
+
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDB/dJ/QbCmAczF7ww/+867Vr8adiZSlWkRnwxrj/XctCl+FtNC31YeytRCvEEIU6LwDuNdV6Q+g1B3+H/VZTRkVvinGMHvfIEfkLE5gJLfv4NTnmGJtninW6vgbfAShkogvyZs9wG3A3jvdFYtMaKihCDyZC0cKEhogw9+3JDMMNf22F1CDONjyT5+S1KjIUyAX/ALpNSTSuh9xeaiTShlOk9EegrEhtzrwPk/2Wla50V3SUavysgnLk9d/z85E1uOh7TcvYQOX6gYADdD9EDYtNSmstfcc7Wz2Ic+adoLJoHfMCzmANr6+LgIqo3shJJn3ZEVWyFhzmnX782vt+Mp"

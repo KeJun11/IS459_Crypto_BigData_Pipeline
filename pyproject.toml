@@ -5,6 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "boto3>=1.42.63",
+    "kagglehub>=1.0.0",
+    "pyspark>=3.5,<3.6",
+    "pyarrow>=23.0.1",
+    "python-dotenv>=1.1.1",
     "websocket-client>=1.9.0",
     "websockets>=16.0",
 ]
