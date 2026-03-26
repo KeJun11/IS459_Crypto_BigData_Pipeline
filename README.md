@@ -179,11 +179,108 @@ Open `http://localhost:8088` and sign in with `admin` / `admin`.
 
 Before the EMR-backed DAGs will run successfully, set these environment variables or Airflow Variables:
 - `BATCH_S3_BUCKET`
+- `AIRFLOW_BRONZE_REST_PREFIX` if you want to point the batch DAGs at a non-default Bronze prefix such as `bronze/rest/kaggle-seed`
 - `AIRFLOW_EMR_SERVERLESS_APPLICATION_ID`
 - `AIRFLOW_EMR_SERVERLESS_EXECUTION_ROLE_ARN`
 - `AIRFLOW_BRONZE_TO_SILVER_ENTRYPOINT`
 - `AIRFLOW_SILVER_TO_GOLD_ENTRYPOINT`
 - `AIRFLOW_EMR_PY_FILES` if your Spark job imports shared repo modules
 - `AIRFLOW_CLICKHOUSE_URL` if EMR should write aggregates and metrics into ClickHouse
+- `AIRFLOW_CLICKHOUSE_VALIDATION_URL` if Airflow itself should validate ClickHouse row counts from a different endpoint than EMR uses
+- `AIRFLOW_TRACKED_SYMBOLS` for the weekly data quality DAG
 
 The DAGs are scaffolded to submit EMR Serverless jobs; they do not run the Spark batch jobs locally inside the Airflow containers.
+
+## Kaggle Seed Bronze Conversion
+
+The Kaggle CSV is treated as one-time seed data. Convert it into Bronze parquet first, then use that Bronze parquet as the input to the existing batch jobs.
+
+Local smoke test:
+
+```powershell
+python scripts/test_kaggle_csv_to_bronze_workflow.py
+```
+
+Local conversion example:
+
+```powershell
+spark-submit src/jobs/kaggle_csv_to_bronze.py `
+  --input-path data/BTCUSDT/BTCUSDT.csv `
+  --output-root data/bronze/rest/kaggle-seed `
+  --symbol BTCUSDT
+```
+
+S3 conversion example:
+
+```powershell
+spark-submit src/jobs/kaggle_csv_to_bronze.py `
+  --input-path s3a://is459-crypto-datalake/bronze/kaggle/btc-price-1m/BTCUSDT.csv `
+  --output-root s3a://is459-crypto-datalake/bronze/rest/kaggle-seed `
+  --symbol BTCUSDT
+```
+
+EMR artifact publishing now uploads the one-time conversion job too:
+
+```powershell
+python scripts/publish_emr_batch_artifacts.py
+```
+
+This prints `kaggle_to_bronze_entrypoint=...` and also writes `KAGGLE_TO_BRONZE_ENTRYPOINT` into `.env` unless `--skip-env-update` is used.
+
+Example EMR submission:
+
+```powershell
+python scripts/submit_emr_serverless_job.py `
+  --application-id <emr-application-id> `
+  --execution-role-arn <execution-role-arn> `
+  --job-name kaggle-csv-to-bronze `
+  --entry-point s3://<bucket>/artifacts/emr/phase6/jobs/kaggle_csv_to_bronze.py `
+  --py-files s3://<bucket>/artifacts/emr/phase6/packages/src.zip `
+  --entry-point-argument --input-path `
+  --entry-point-argument s3://<bucket>/bronze/kaggle/btc-price-1m/BTCUSDT.csv `
+  --entry-point-argument --output-root `
+  --entry-point-argument s3://<bucket>/bronze/rest/kaggle-seed `
+  --entry-point-argument --symbol `
+  --entry-point-argument BTCUSDT
+```
+
+## Shakedown Runbook
+
+Stage 0: Bronze seed conversion
+- Run the Kaggle CSV to Bronze parquet conversion.
+- Verify parquet files appear under `bronze/rest/kaggle-seed/symbol=.../year=.../month=.../`.
+- Keep this prefix separate from the normal Binance REST Bronze prefix.
+
+Stage 1: Local shakedown
+- Start the local stack with `docker compose up -d`.
+- Restart Grafana after pulling new repo changes so the provisioned dashboard is loaded.
+- Open Grafana at `http://localhost:3000` and use the `Pipeline Shakedown Overview` dashboard.
+- Run the local conversion job or the local smoke test above.
+- Run the local Spark batch jobs against the converted Bronze parquet:
+
+```powershell
+spark-submit src/jobs/bronze_to_silver_batch.py `
+  --input-root data/bronze/rest/kaggle-seed `
+  --silver-output data/silver/rest/kaggle-seed `
+  --clickhouse-url http://localhost:8123
+
+spark-submit src/jobs/silver_to_gold_batch.py `
+  --silver-input data/silver/rest/kaggle-seed `
+  --hourly-output data/gold/hourly/kaggle-seed `
+  --daily-output data/gold/daily/kaggle-seed `
+  --clickhouse-url http://localhost:8123
+```
+
+- Confirm `raw_ohlcv_1m`, `agg_ohlcv_1h`, `agg_ohlcv_1d`, and `pipeline_metrics` populate in ClickHouse and show up in Grafana.
+
+Stage 2: EC2 + AWS shakedown
+- Reuse the same `bronze/rest/kaggle-seed` prefix in S3.
+- Set `AIRFLOW_BRONZE_REST_PREFIX=bronze/rest/kaggle-seed` in the Airflow runtime.
+- Trigger `backfill_batch_reprocessing` for a small date window that exists in the converted data.
+- Trigger `daily_aggregate_refresh` manually after the backfill succeeds.
+- Validate row counts in ClickHouse before unpausing the daily schedule.
+
+Stage 3: Streaming visibility
+- Start the stream producer and `stream_to_silver` consumer as usual.
+- Watch the `Pipeline Shakedown Overview` dashboard for advancing raw timestamps, per-minute row counts, and new pipeline metrics.
+- Use direct ClickHouse queries only as a fallback if Grafana looks stale.

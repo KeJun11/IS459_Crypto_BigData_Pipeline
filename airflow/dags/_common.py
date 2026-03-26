@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import urllib.parse
+import urllib.request
 from datetime import timedelta
 
 from airflow.models import Variable
@@ -25,20 +27,25 @@ BRONZE_TO_SILVER_ENTRYPOINT = get_setting("AIRFLOW_BRONZE_TO_SILVER_ENTRYPOINT",
 SILVER_TO_GOLD_ENTRYPOINT = get_setting("AIRFLOW_SILVER_TO_GOLD_ENTRYPOINT", "s3://replace-me/jobs/silver_to_gold_batch.py")
 EMR_PY_FILES = [value.strip() for value in get_setting("AIRFLOW_EMR_PY_FILES", "").split(",") if value.strip()]
 CLICKHOUSE_URL = get_setting("AIRFLOW_CLICKHOUSE_URL", "")
+CLICKHOUSE_VALIDATION_URL = get_setting("AIRFLOW_CLICKHOUSE_VALIDATION_URL", CLICKHOUSE_URL)
 CLICKHOUSE_DATABASE = get_setting("AIRFLOW_CLICKHOUSE_DATABASE", "crypto")
+TRACKED_SYMBOLS = [value.strip() for value in get_setting("AIRFLOW_TRACKED_SYMBOLS", "BTCUSDT,ETHUSDT,SOLUSDT").split(",") if value.strip()]
 SKIP_BATCH_CLICKHOUSE = get_setting("AIRFLOW_BATCH_SKIP_CLICKHOUSE", "false").lower() in {"1", "true", "yes"}
 BASE_SPARK_SUBMIT_PARAMETERS = get_setting(
     "AIRFLOW_EMR_SPARK_SUBMIT_PARAMETERS",
-    "--conf spark.executor.memory=2g --conf spark.driver.memory=1g --conf spark.executor.cores=2",
+    "--conf spark.dynamicAllocation.enabled=false --conf spark.executor.instances=1 --conf spark.executor.cores=1 --conf spark.executor.memory=2g --conf spark.driver.cores=1 --conf spark.driver.memory=1g",
 )
 DEFAULT_RETRIES = int(get_setting("AIRFLOW_DEFAULT_RETRIES", "2"))
 DEFAULT_RETRY_DELAY_MINUTES = int(get_setting("AIRFLOW_DEFAULT_RETRY_DELAY_MINUTES", "5"))
+MAX_RETRY_DELAY_MINUTES = int(get_setting("AIRFLOW_MAX_RETRY_DELAY_MINUTES", "30"))
 
 DEFAULT_DAG_ARGS = {
     "owner": "airflow",
     "depends_on_past": False,
     "retries": DEFAULT_RETRIES,
     "retry_delay": timedelta(minutes=DEFAULT_RETRY_DELAY_MINUTES),
+    "retry_exponential_backoff": True,
+    "max_retry_delay": timedelta(minutes=MAX_RETRY_DELAY_MINUTES),
 }
 
 
@@ -93,3 +100,22 @@ def with_clickhouse_arguments(arguments: list[str]) -> list[str]:
     else:
         resolved_arguments.append("--skip-clickhouse")
     return resolved_arguments
+
+
+def build_clickhouse_interval_filter(column: str, start_ts: str, end_ts: str) -> str:
+    return (
+        f"{column} >= toDateTime64('{start_ts}', 3, 'UTC') "
+        f"AND {column} < toDateTime64('{end_ts}', 3, 'UTC')"
+    )
+
+
+def clickhouse_scalar(query: str, url: str | None = None) -> str:
+    target_url = url or CLICKHOUSE_VALIDATION_URL
+    if not target_url:
+        raise ValueError("Missing AIRFLOW_CLICKHOUSE_VALIDATION_URL or AIRFLOW_CLICKHOUSE_URL for validation queries.")
+    request = urllib.request.Request(
+        url=f"{target_url}/?query={urllib.parse.quote(query)}",
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return response.read().decode("utf-8").strip()

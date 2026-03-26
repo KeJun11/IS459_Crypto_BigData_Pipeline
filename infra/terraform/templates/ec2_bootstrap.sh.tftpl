@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 dnf update -y
-dnf install -y docker git awscli curl xfsprogs
+dnf install -y docker git awscli xfsprogs
 
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l ${swap_size_gb}G /swapfile
@@ -61,12 +61,16 @@ fi
 %{ if repo_url != "" ~}
 mkdir -p "$(dirname "${repo_path}")"
 if [ ! -d "${repo_path}/.git" ]; then
-  git clone --branch "${repo_ref}" "${repo_url}" "${repo_path}"
+  if ! git clone --branch "${repo_ref}" "${repo_url}" "${repo_path}"; then
+    echo "Warning: failed to clone ${repo_url}. Provide a public repo URL or instance-side Git credentials." >&2
+  fi
 else
   cd "${repo_path}"
-  git fetch --all --tags
-  git checkout "${repo_ref}"
-  git pull --ff-only origin "${repo_ref}"
+  if ! git fetch --all --tags || ! git checkout "${repo_ref}" || ! git pull --ff-only origin "${repo_ref}"; then
+    echo "Warning: failed to refresh ${repo_path}. Check Git credentials and branch access." >&2
+  fi
 fi
-chown -R ec2-user:ec2-user "${repo_path}"
+if [ -d "${repo_path}" ]; then
+  chown -R ec2-user:ec2-user "${repo_path}"
+fi
 %{ endif ~}

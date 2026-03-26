@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS crypto.pipeline_metrics
 )
 ENGINE = MergeTree
 PARTITION BY toYYYYMM(metric_time)
-ORDER BY (component, metric_name, metric_time, symbol);
+ORDER BY (component, metric_name, metric_time, ifNull(symbol, ''));

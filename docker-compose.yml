@@ -14,6 +14,8 @@ x-airflow-common:
     AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
     BATCH_S3_BUCKET: ${BATCH_S3_BUCKET:-}
     BATCH_S3_PREFIX: ${BATCH_S3_PREFIX:-bronze/rest/binance-klines}
+    AIRFLOW_BRONZE_REST_PREFIX: ${AIRFLOW_BRONZE_REST_PREFIX:-}
+    AIRFLOW_SILVER_REST_PREFIX: ${AIRFLOW_SILVER_REST_PREFIX:-}
     AIRFLOW_AWS_CONN_ID: ${AIRFLOW_AWS_CONN_ID:-aws_default}
     AIRFLOW_EMR_SERVERLESS_APPLICATION_ID: ${AIRFLOW_EMR_SERVERLESS_APPLICATION_ID:-}
     AIRFLOW_EMR_SERVERLESS_EXECUTION_ROLE_ARN: ${AIRFLOW_EMR_SERVERLESS_EXECUTION_ROLE_ARN:-}
@@ -21,9 +23,11 @@ x-airflow-common:
     AIRFLOW_BRONZE_TO_SILVER_ENTRYPOINT: ${AIRFLOW_BRONZE_TO_SILVER_ENTRYPOINT:-s3://replace-me/jobs/bronze_to_silver_batch.py}
     AIRFLOW_SILVER_TO_GOLD_ENTRYPOINT: ${AIRFLOW_SILVER_TO_GOLD_ENTRYPOINT:-s3://replace-me/jobs/silver_to_gold_batch.py}
     AIRFLOW_EMR_PY_FILES: ${AIRFLOW_EMR_PY_FILES:-}
-    AIRFLOW_EMR_SPARK_SUBMIT_PARAMETERS: ${AIRFLOW_EMR_SPARK_SUBMIT_PARAMETERS:---conf spark.executor.memory=2g --conf spark.driver.memory=1g --conf spark.executor.cores=2}
+    AIRFLOW_EMR_SPARK_SUBMIT_PARAMETERS: ${AIRFLOW_EMR_SPARK_SUBMIT_PARAMETERS:---conf spark.dynamicAllocation.enabled=false --conf spark.executor.instances=1 --conf spark.executor.cores=1 --conf spark.executor.memory=2g --conf spark.driver.cores=1 --conf spark.driver.memory=1g}
     AIRFLOW_CLICKHOUSE_URL: ${AIRFLOW_CLICKHOUSE_URL:-}
+    AIRFLOW_CLICKHOUSE_VALIDATION_URL: ${AIRFLOW_CLICKHOUSE_VALIDATION_URL:-}
     AIRFLOW_CLICKHOUSE_DATABASE: ${AIRFLOW_CLICKHOUSE_DATABASE:-crypto}
+    AIRFLOW_TRACKED_SYMBOLS: ${AIRFLOW_TRACKED_SYMBOLS:-BTCUSDT,ETHUSDT,SOLUSDT}
     AIRFLOW_BATCH_SKIP_CLICKHOUSE: ${AIRFLOW_BATCH_SKIP_CLICKHOUSE:-false}
     _PIP_ADDITIONAL_REQUIREMENTS: apache-airflow-providers-amazon boto3
   volumes:
@@ -43,6 +47,7 @@ services:
       - "9000:9000"
     environment:
       CLICKHOUSE_DB: crypto
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./sql/clickhouse:/docker-entrypoint-initdb.d

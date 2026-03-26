@@ -6,7 +6,10 @@ import zipfile
 from pathlib import Path
 
 import boto3
+from dotenv import load_dotenv
 
+
+load_dotenv()
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -65,20 +68,24 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     env_path = Path(args.env_file)
 
+    kaggle_script = REPO_ROOT / "src" / "jobs" / "kaggle_csv_to_bronze.py"
     bronze_script = REPO_ROOT / "src" / "jobs" / "bronze_to_silver_batch.py"
     gold_script = REPO_ROOT / "src" / "jobs" / "silver_to_gold_batch.py"
     src_zip = build_src_zip(output_dir)
 
     s3_client = boto3.client("s3", region_name=args.region)
+    kaggle_uri = upload_file(s3_client, bucket, f"{prefix}/jobs/kaggle_csv_to_bronze.py", kaggle_script)
     bronze_uri = upload_file(s3_client, bucket, f"{prefix}/jobs/bronze_to_silver_batch.py", bronze_script)
     gold_uri = upload_file(s3_client, bucket, f"{prefix}/jobs/silver_to_gold_batch.py", gold_script)
     src_zip_uri = upload_file(s3_client, bucket, f"{prefix}/packages/src.zip", src_zip)
 
     if not args.skip_env_update:
+        set_env_value(env_path, "KAGGLE_TO_BRONZE_ENTRYPOINT", kaggle_uri)
         set_env_value(env_path, "AIRFLOW_BRONZE_TO_SILVER_ENTRYPOINT", bronze_uri)
         set_env_value(env_path, "AIRFLOW_SILVER_TO_GOLD_ENTRYPOINT", gold_uri)
         set_env_value(env_path, "AIRFLOW_EMR_PY_FILES", src_zip_uri)
 
+    print(f"kaggle_to_bronze_entrypoint={kaggle_uri}")
     print(f"bronze_to_silver_entrypoint={bronze_uri}")
     print(f"silver_to_gold_entrypoint={gold_uri}")
     print(f"emr_py_files={src_zip_uri}")

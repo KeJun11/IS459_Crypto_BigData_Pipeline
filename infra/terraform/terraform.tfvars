@@ -11,12 +11,13 @@ root_volume_size_gb            = 40
 ec2_swap_size_gb               = 4
 ec2_docker_data_volume_size_gb = 80
 ec2_bootstrap_repo_url         = "https://github.com/KeJun11/IS459_Crypto_BigData_Pipeline.git"
-ec2_bootstrap_repo_ref         = "main"
+ec2_bootstrap_repo_ref         = "kj-branch"
 ec2_bootstrap_repo_path        = "/opt/is459-crypto-bigdata-pipeline"
 
 admin_cidrs = [
   "210.10.6.10/32",
-  "202.161.35.16/32"
+  "202.161.35.16/32",
+  "180.129.3.128/32",
 ]
 
 ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDB/dJ/QbCmAczF7ww/+867Vr8adiZSlWkRnwxrj/XctCl+FtNC31YeytRCvEEIU6LwDuNdV6Q+g1B3+H/VZTRkVvinGMHvfIEfkLE5gJLfv4NTnmGJtninW6vgbfAShkogvyZs9wG3A3jvdFYtMaKihCDyZC0cKEhogw9+3JDMMNf22F1CDONjyT5+S1KjIUyAX/ALpNSTSuh9xeaiTShlOk9EegrEhtzrwPk/2Wla50V3SUavysgnLk9d/z85E1uOh7TcvYQOX6gYADdD9EDYtNSmstfcc7Wz2Ic+adoLJoHfMCzmANr6+LgIqo3shJJn3ZEVWyFhzmnX782vt+Mp"

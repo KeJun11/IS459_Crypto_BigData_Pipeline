@@ -10,7 +10,7 @@ load_dotenv()
 
 
 DATASET_HANDLE = os.getenv("KAGGLE_DATASET", "kaanxtr/btc-price-1m")
-S3_BUCKET = os.environ["S3_BUCKET"]
+S3_BUCKET = os.environ["BATCH_S3_BUCKET"]
 S3_PREFIX = os.getenv("S3_PREFIX", "bronze/kaggle/btc-price-1m")
 FORCE_DOWNLOAD = os.getenv("KAGGLE_FORCE_DOWNLOAD", "false").lower() == "true"
 

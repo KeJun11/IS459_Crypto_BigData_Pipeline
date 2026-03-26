@@ -38,8 +38,8 @@
 - [ ] Phase 4: Configure checkpointing to S3
 
 - [x] Phase 5: ClickHouse materialized views for returns, MA, volatility
-- [ ] Phase 6: EMR Serverless batch jobs
-- [ ] Phase 7: Airflow DAGs
+- [x] Phase 6: EMR Serverless batch jobs
+- [x] Phase 7: Airflow DAGs
 - [ ] Phase 8: Data quality checks
 - [ ] Phase 9: Recovery/backfill workflow
 - [ ] Phase 10: Monitoring and observability
