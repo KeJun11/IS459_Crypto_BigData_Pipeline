@@ -53,7 +53,6 @@ def _build_kline_schema() -> pa.Schema:
             fields.append((col, pa.float64()))
         else:
             fields.append((col, pa.string()))
-    fields.append(("symbol", pa.string()))
     return pa.schema(fields)
 
 
@@ -179,7 +178,6 @@ def _pull_klines_full(symbol: str) -> list[dict[str, Any]]:
             record = {
                 col: kline[i] for i, col in enumerate(settings.KLINE_COLUMNS)
             }
-            record["symbol"] = symbol
             all_records.append(record)
 
         last_open_time = raw_klines[-1][0]
