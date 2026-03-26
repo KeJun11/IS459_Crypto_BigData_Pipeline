@@ -34,17 +34,18 @@ SPARK_SCRIPT_S3_PATH = os.getenv(
 BINANCE_BASE_URL = "https://api.binance.com/api/v3"
 
 BINANCE_SYMBOLS = [
-    "BTCUSDT",  "ETHUSDT",  "BNBUSDT",  "XRPUSDT",  "SOLUSDT",
-    "ADAUSDT",  "DOGEUSDT", "TRXUSDT",  "AVAXUSDT", "LINKUSDT",
-    "DOTUSDT",  "MATICUSDT","SHIBUSDT", "LTCUSDT",  "BCHUSDT",
-    "UNIUSDT",  "ATOMUSDT", "XLMUSDT",  "NEARUSDT", "ICPUSDT",
-    "APTUSDT",  "FILUSDT",  "VETUSDT",  "HBARUSDT", "MANAUSDT",
-    "ALGOUSDT", "QNTUSDT",  "AAVEUSDT", "EGLDUSDT", "SANDUSDT",
-    "EOSUSDT",  "THETAUSDT","AXSUSDT",  "FTMUSDT",  "RUNEUSDT",
-    "GALAUSDT", "FLOWUSDT", "XTZUSDT",  "CHZUSDT",  "ZILUSDT",
-    "ENJUSDT",  "BATUSDT",  "COMPUSDT", "SNXUSDT",  "MKRUSDT",
-    "YFIUSDT",  "SUSHIUSDT","1INCHUSDT","CRVUSDT",  "LRCUSDT",
+    "AAVEUSDT",  "ADAUSDT",   "ALGOUSDT",  "ATOMUSDT",  "AVAXUSDT",
+    "BATUSDT",   "BCHUSDT",   "BNBUSDT",   "BTCUSDT",   "CAKEUSDT",
+    "CHZUSDT",   "CRVUSDT",   "DASHUSDT",  "DEXEUSDT",  "DOGEUSDT",
+    "DOTUSDT",   "ENAUSDT",   "ENJUSDT",   "EOSUSDT",   "ETCUSDT",
+    "ETHUSDT",   "FILUSDT",   "GRTUSDT",   "HBARUSDT",  "ICPUSDT",
+    "IOSTUSDT",  "IOTAUSDT",  "LINKUSDT",  "LTCUSDT",   "MANAUSDT",
+    "NEARUSDT",  "NEOUSDT",   "QTUMUSDT",  "RVNUSDT",   "SANDUSDT",
+    "SHIBUSDT",  "SOLUSDT",   "STMXUSDT",  "SUSHIUSDT", "TFUELUSDT",
+    "THETAUSDT", "TIAUSDT",   "TRXUSDT",   "UNIUSDT",   "VETUSDT",
+    "XLMUSDT",   "XRPUSDT",   "XTZUSDT",   "ZECUSDT",   "ZILUSDT",
 ]
+
 
 # Kline interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d, etc.
 BINANCE_INTERVAL = "1m"
@@ -68,4 +69,8 @@ KLINE_COLUMNS = [
     "number_of_trades",                # 8
     "taker_buy_base_asset_volume",     # 9
     "taker_buy_quote_asset_volume",    # 10
+    "ignore",                          # 11 – Unused
 ]
+
+
+
