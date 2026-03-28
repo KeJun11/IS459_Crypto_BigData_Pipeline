@@ -20,6 +20,30 @@ AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 S3_BUCKET_RAW = os.getenv("S3_BUCKET_RAW")
 S3_RAW_PREFIX = "raw/"
 
+S3_CLEANED_BUCKET = os.getenv("S3_CLEANED_BUCKET", 'is459-crypto-raw-data') 
+
+CLICKHOUSE_PROTOCOL = os.getenv("CLICKHOUSE_PROTOCOL", "http")
+CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "127.0.0.1")
+CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
+CLICKHOUSE_DB = os.getenv(
+    "CLICKHOUSE_DB",
+    os.getenv("CLICKHOUSE_DATABASE", "cleaned_crypto"),
+)
+CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "default")
+CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "")
+CLICKHOUSE_RAW_OHLCV_TABLE = os.getenv("CLICKHOUSE_RAW_OHLCV_TABLE", "ohlcv_1min")
+CLICKHOUSE_LOAD_MODE = os.getenv("CLICKHOUSE_LOAD_MODE", "append").lower()
+CLICKHOUSE_HTTP_TIMEOUT = int(os.getenv("CLICKHOUSE_HTTP_TIMEOUT", "7200"))
+CLICKHOUSE_SOURCE_URL = os.getenv(
+    "CLICKHOUSE_SOURCE_URL",
+    (
+        f"https://{S3_CLEANED_BUCKET}.s3.{AWS_REGION}.amazonaws.com/"
+        "cleaned/bq2_daily_prices_initial_full_load/date=*/*.parquet"
+    )
+    if S3_CLEANED_BUCKET
+    else "",
+)
+
 
 GLUE_DATABASE = os.getenv("GLUE_DATABASE")
 
