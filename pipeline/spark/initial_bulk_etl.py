@@ -1,14 +1,8 @@
 """
-initial_bulk_etl.py
+initial_ingestion_2.py
 ────────────────────────────────────────────────────────────────────────────────
-Transform raw bronze data from s3://<S3_BUCKET_RAW>/bronze/ and write cleaned
-Parquet to s3://<S3_BUCKET_RAW>/cleaned/bq2_daily_prices_initial_full_load/.
-
-Designed to run as an EMR Spark step:
-    spark-submit s3://.../initial_bulk_etl.py
-
-Environment variables (set via --conf spark.executorEnv.X or EMR step env):
-    S3_BUCKET_RAW       (required) raw data bucket name
+Transform raw bronze data from s3a://<S3_BUCKET_RAW>/bronze/ and write cleaned
+Parquet to s3a://<S3_BUCKET_RAW>/cleaned/bq2_daily_prices_initial_full_load/.
 """
 
 import boto3
@@ -25,48 +19,37 @@ from pyspark.sql.types import (
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 BUCKET = "is459-crypto-raw-data"
+INGEST_FROM_DATE = "2025-09-21"
 
 # ── SparkSession ──────────────────────────────────────────────────────────────
-# On EMR the master URL and AWS credentials are provided by the cluster.
-# Do not set .master() — EMR injects yarn/local automatically.
 spark = (
     SparkSession.builder.appName("initial-bulk-etl")
-    # ── S3A — use EMR instance profile (no hardcoded keys) ───────────────────
-    # REMOVED: .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
     .config(
         "spark.hadoop.fs.s3a.aws.credentials.provider",
         "com.amazonaws.auth.InstanceProfileCredentialsProvider",
     )
-    # ── S3A connection pool ───────────────────────────────────────────────────
     .config("spark.hadoop.fs.s3a.connection.maximum", "200")
     .config("spark.hadoop.fs.s3a.threads.max", "200")
-    # ── S3A read throughput ───────────────────────────────────────────────────
-    .config("spark.hadoop.fs.s3a.readahead.range", "8388608")  # 8 MB
-    .config("spark.hadoop.fs.s3a.block.size", "134217728")  # 128 MB
+    .config("spark.hadoop.fs.s3a.readahead.range", "8388608")
+    .config("spark.hadoop.fs.s3a.block.size", "134217728")
     .config("spark.hadoop.fs.s3a.input.fadvise", "sequential")
     .config("spark.hadoop.fs.s3a.fast.upload", "true")
     .config("spark.hadoop.fs.s3a.fast.upload.buffer", "bytebuffer")
-    .config("spark.hadoop.fs.s3a.multipart.size", "67108864")  # 64 MB
-    # ── Serialisation ─────────────────────────────────────────────────────────
+    .config("spark.hadoop.fs.s3a.multipart.size", "67108864")
     .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     .config("spark.kryoserializer.buffer.max", "512m")
-    # ── Memory ────────────────────────────────────────────────────────────────
     .config("spark.memory.fraction", "0.8")
     .config("spark.memory.storageFraction", "0.1")
     .config("spark.memory.offHeap.enabled", "true")
     .config("spark.memory.offHeap.size", "2g")
-    # ── Shuffle I/O ───────────────────────────────────────────────────────────
-    .config("spark.shuffle.file.buffer", "1m")
-    .config("spark.reducer.maxSizeInFlight", "96m")
-    .config("spark.shuffle.localDisk.file.output.buffer", "5m")
-    # ── SQL / AQE ─────────────────────────────────────────────────────────────
+    .config("spark.reducer.maxSizeInFlight", "100663296")
+    .config("spark.shuffle.localDisk.file.output.buffer", "5242880")
     .config("spark.sql.adaptive.enabled", "true")
     .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
     .config("spark.sql.adaptive.advisoryPartitionSizeInBytes", "134217728")
     .config("spark.sql.files.maxPartitionBytes", "134217728")
     .config("spark.sql.files.openCostInBytes", "67108864")
-    # ── Network timeouts ──────────────────────────────────────────────────────
-    .config("spark.network.timeout", "600s")
+    .config("spark.network.timeout", "600")
     .config("spark.sql.broadcastTimeout", "600")
     .getOrCreate()
 )
@@ -77,8 +60,7 @@ print(f"Default parallel  : {spark.sparkContext.defaultParallelism}")
 print(f"Shuffle partitions: {spark.conf.get('spark.sql.shuffle.partitions')}")
 print("SparkSession ready")
 
-# ── boto3 client (listing only) ───────────────────────────────────────────────
-# On EMR boto3 picks up the instance profile automatically — no key args needed.
+# ── boto3 client ──────────────────────────────────────────────────────────────
 s3 = boto3.client("s3")
 
 
@@ -97,14 +79,12 @@ binance_tickers = {
 }
 
 in_both = sorted(kaggle_tickers & binance_tickers)
-only_kaggle = sorted(kaggle_tickers - binance_tickers)
-only_binance = sorted(binance_tickers - kaggle_tickers)
 
 print(f"Kaggle  : {len(kaggle_tickers):>4}  tickers")
 print(f"Binance : {len(binance_tickers):>4}  tickers")
 print(f"In both : {len(in_both):>4}  tickers")
 
-# ── § 3  Kaggle Preprocessing ─────────────────────────────────────────────────
+# ── § 3  Kaggle Schema ────────────────────────────────────────────────────────
 KAGGLE_SCHEMA = StructType(
     [
         StructField("timestamp", TimestampType(), True),
@@ -147,6 +127,7 @@ def clean_df(df):
     )
 
 
+# ── § 4  Kaggle Preprocessing ─────────────────────────────────────────────────
 KAGGLE_EXCLUDE = {"EOSUSDT", "STMXUSDT"}
 
 kaggle_paths = [
@@ -167,7 +148,7 @@ kaggle_raw = (
 kaggle_clean = clean_df(kaggle_raw)
 print("Kaggle DataFrame ready")
 
-# ── § 4  Binance Preprocessing ────────────────────────────────────────────────
+# ── § 5  Binance Preprocessing ────────────────────────────────────────────────
 BINANCE2_BASE = f"s3a://{BUCKET}/bronze/binance2"
 
 binance_paths = [f"s3a://{BUCKET}/{p}" for p in list_s3_folders("bronze/binance2/")]
@@ -195,10 +176,10 @@ binance_raw = (
 binance_clean = clean_df(binance_raw)
 print("Binance DataFrame ready")
 
-# ── § 5  Union ────────────────────────────────────────────────────────────────
+# ── § 6  Union ────────────────────────────────────────────────────────────────
 combined_df = kaggle_clean.unionByName(binance_clean)
 
-# ── § 6  Data Quality Filters ─────────────────────────────────────────────────
+# ── § 7  Data Quality Filters ─────────────────────────────────────────────────
 combined_df = combined_df.filter(
     (F.col("open") > 0)
     & (F.col("high") > 0)
@@ -212,7 +193,11 @@ combined_df = combined_df.filter(
     & (F.col("volume") >= 0)
 )
 
-# ── § 7  Write ────────────────────────────────────────────────────────────────
+# ── § 8  Date Filter ──────────────────────────────────────────────────────────
+combined_df = combined_df.filter(F.to_date("timestamp") >= F.lit(INGEST_FROM_DATE))
+print(f"Applied ingestion cutoff: date >= {INGEST_FROM_DATE}")
+
+# ── § 9  Write ────────────────────────────────────────────────────────────────
 DAILY_OUT = f"s3a://{BUCKET}/cleaned/bq2_daily_prices_initial_full_load"
 
 (
