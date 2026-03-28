@@ -121,7 +121,7 @@ DAILY_OUT = f"s3a://{BUCKET}/cleaned/bq2_daily_prices"
 
 (
     today_df.withColumn("date", F.to_date("timestamp"))
-    .write.mode("overwrite")
+    .write.mode("append")
     .partitionBy("date")
     .parquet(DAILY_OUT)
 )
