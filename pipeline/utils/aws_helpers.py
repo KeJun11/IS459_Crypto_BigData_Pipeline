@@ -21,3 +21,7 @@ def get_glue_client():
 
 def get_emr_client():
     return _session().client("emr")
+
+
+def get_kinesis_client():
+    return _session().client("kinesis")

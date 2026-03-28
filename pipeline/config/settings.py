@@ -69,6 +69,18 @@ MEXC_SYMBOLS = BINANCE_SYMBOLS.copy()
 # Data sources to pull from (toggle on/off)
 ENABLED_SOURCES = ["binance", "mexc"]
 
+# ──────────────────────────────────────────────
+# Kinesis / Streaming
+# ──────────────────────────────────────────────
+KINESIS_STREAM_NAME = os.getenv("KINESIS_STREAM_NAME", "crypto-stream")
+
+# Symbols to stream via WebSocket (keep small — 3 core pairs)
+STREAM_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+# How long the WebSocket consumer runs per DAG slot (seconds)
+# Default: 3600 = 1 hour; set STREAM_DURATION_SECONDS=0 for indefinite
+STREAM_DURATION_SECONDS = int(os.getenv("STREAM_DURATION_SECONDS", "3600"))
+
 # Column names matching Binance kline response (index 0–11)
 KLINE_COLUMNS = [
     "timestamp",                       # 0  – Kline open time (ms)
