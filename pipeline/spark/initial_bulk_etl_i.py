@@ -1,8 +1,8 @@
 """
 initial_ingestion_2.py
 ────────────────────────────────────────────────────────────────────────────────
-Transform raw bronze data from s3a://<S3_BUCKET_RAW>/bronze/ and write cleaned
-Parquet to s3a://<S3_BUCKET_RAW>/cleaned/bq2_daily_prices_initial_full_load/.
+Transform raw bronze data from s3://<S3_BUCKET_RAW>/bronze/ and write cleaned
+Parquet to s3://<S3_BUCKET_RAW>/cleaned/bq2_daily_prices_initial_full_load/.
 """
 
 import boto3
@@ -24,18 +24,6 @@ INGEST_FROM_DATE = "2025-09-21"
 # ── SparkSession ──────────────────────────────────────────────────────────────
 spark = (
     SparkSession.builder.appName("initial-bulk-etl")
-    .config(
-        "spark.hadoop.fs.s3a.aws.credentials.provider",
-        "com.amazonaws.auth.InstanceProfileCredentialsProvider",
-    )
-    .config("spark.hadoop.fs.s3a.connection.maximum", "200")
-    .config("spark.hadoop.fs.s3a.threads.max", "200")
-    .config("spark.hadoop.fs.s3a.readahead.range", "8388608")
-    .config("spark.hadoop.fs.s3a.block.size", "134217728")
-    .config("spark.hadoop.fs.s3a.input.fadvise", "sequential")
-    .config("spark.hadoop.fs.s3a.fast.upload", "true")
-    .config("spark.hadoop.fs.s3a.fast.upload.buffer", "bytebuffer")
-    .config("spark.hadoop.fs.s3a.multipart.size", "67108864")
     .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     .config("spark.kryoserializer.buffer.max", "512m")
     .config("spark.memory.fraction", "0.8")
@@ -131,7 +119,7 @@ def clean_df(df):
 KAGGLE_EXCLUDE = {"EOSUSDT", "STMXUSDT"}
 
 kaggle_paths = [
-    f"s3a://{BUCKET}/{p}" for p in list_s3_folders("bronze/kaggle/btc-price-1m/")
+    f"s3://{BUCKET}/{p}" for p in list_s3_folders("bronze/kaggle/btc-price-1m/")
 ]
 
 kaggle_raw = (
@@ -149,9 +137,9 @@ kaggle_clean = clean_df(kaggle_raw)
 print("Kaggle DataFrame ready")
 
 # ── § 5  Binance Preprocessing ────────────────────────────────────────────────
-BINANCE2_BASE = f"s3a://{BUCKET}/bronze/binance2"
+BINANCE2_BASE = f"s3://{BUCKET}/bronze/binance2"
 
-binance_paths = [f"s3a://{BUCKET}/{p}" for p in list_s3_folders("bronze/binance2/")]
+binance_paths = [f"s3://{BUCKET}/{p}" for p in list_s3_folders("bronze/binance2/")]
 
 binance_raw = (
     spark.read.option("basePath", BINANCE2_BASE)
@@ -194,11 +182,11 @@ combined_df = combined_df.filter(
 )
 
 # ── § 8  Date Filter ──────────────────────────────────────────────────────────
-combined_df = combined_df.filter(F.to_date("timestamp") >= F.lit(INGEST_FROM_DATE))
-print(f"Applied ingestion cutoff: date >= {INGEST_FROM_DATE}")
+# combined_df = combined_df.filter(F.to_date("timestamp") >= F.lit(INGEST_FROM_DATE))
+# print(f"Applied ingestion cutoff: date >= {INGEST_FROM_DATE}")
 
 # ── § 9  Write ────────────────────────────────────────────────────────────────
-DAILY_OUT = f"s3a://{BUCKET}/cleaned/bq2_daily_prices_initial_full_load"
+DAILY_OUT = f"s3://{BUCKET}/cleaned/bq2_daily_prices_initial_full_load"
 
 (
     combined_df.withColumn("date", F.to_date("timestamp"))
