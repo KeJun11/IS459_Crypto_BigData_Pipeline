@@ -2,7 +2,8 @@
 Task 1 – pull_api_data
 ======================
 Pulls 1-minute kline (candlestick) data from the Binance public API
-for every symbol in settings.BINANCE_SYMBOLS.
+for every symbol in settings.BINANCE_SYMBOLS, backfilling from
+BACKFILL_START_DATE to the current time using pagination.
 
 Binance /api/v3/klines returns arrays of 12 elements per kline:
     [open_time, open, high, low, close, volume, close_time,
@@ -11,7 +12,6 @@ Binance /api/v3/klines returns arrays of 12 elements per kline:
 
 This task converts each array to a dict using settings.KLINE_COLUMNS.
 """
-
 
 import time
 import datetime as dt
@@ -25,181 +25,123 @@ from pipeline.utils.logger import get_logger
 log = get_logger("task1.pull_api_data")
 
 
-SOURCES = {
-    "binance": {
-        "base_url": settings.BINANCE_BASE_URL,
-        "symbols": settings.BINANCE_SYMBOLS,
-        "limit": settings.BINANCE_LIMIT,
-        "sleep": 0.1,   # seconds between requests (conservative)
-    },
-    "mexc": {
-        "base_url": settings.MEXC_BASE_URL,
-        "symbols": settings.MEXC_SYMBOLS,
-        "limit": settings.MEXC_LIMIT,
-        "sleep": 0.2,   # MEXC has tighter per-second limits
-    },
-}
+def _parse_start_time() -> int:
+    """
+    Parse BACKFILL_START_DATE (format: YYYY-MM-DD) and return milliseconds since epoch.
+    """
+    date_obj = dt.datetime.strptime(settings.BACKFILL_START_DATE, "%Y-%m-%d")
+    date_obj = date_obj.replace(tzinfo=dt.timezone.utc)
+    return int(date_obj.timestamp() * 1000)
 
 
-
-def _pull_klines_page(
-    base_url: str,
-    symbol: str,
-    interval: str,
-    limit: int,
-    start_time: int | None = None,
-    end_time: int | None = None,
-) -> list[list]:
-    """Fetch a single page of klines from Binance or MEXC."""
-    url = f"{base_url}/klines"
+def _pull_klines_page(symbol: str, start_time: int, end_time: int) -> list[list]:
+    """
+    Fetch a single page of klines between start_time and end_time (milliseconds).
+    Returns a list of kline arrays.
+    """
+    url = f"{settings.BINANCE_BASE_URL}/klines"
     params = {
         "symbol": symbol,
-        "interval": interval,
-        "limit": limit,
+        "interval": settings.BINANCE_INTERVAL,
+        "limit": settings.BINANCE_LIMIT,
+        "startTime": start_time,
+        "endTime": end_time,
     }
-    if start_time:
-        params["startTime"] = start_time
-    if end_time:
-        params["endTime"] = end_time
 
     resp = requests.get(url, params=params, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
 
-def _pull_klines_full(
-    source_name: str,
-    base_url: str,
-    symbol: str,
-    limit: int,
-    sleep_sec: float,
-) -> list[dict[str, Any]]:
+def _pull_klines_full(symbol: str) -> list[dict[str, Any]]:
     """
-    Pull all daily klines for a symbol going back BACKFILL_DAYS.
+    Fetch all klines for a symbol from BACKFILL_START_DATE to now.
     Paginates automatically using startTime/endTime.
     """
-    interval = settings.BINANCE_INTERVAL
     end_ms = int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000)
-    start_ms = end_ms - (settings.BACKFILL_DAYS * 24 * 60 * 60 * 1000)
+    start_ms = _parse_start_time()
 
     all_records: list[dict[str, Any]] = []
     cursor = start_ms
     page = 0
 
+    log.info("Binance  ➜  %s  backfilling from %s to now (1m interval)",
+             symbol, settings.BACKFILL_START_DATE)
+
     while cursor < end_ms:
         page += 1
         try:
-            raw = _pull_klines_page(
-                base_url=base_url,
-                symbol=symbol,
-                interval=interval,
-                limit=limit,
-                start_time=cursor,
-                end_time=end_ms,
-            )
+            raw_klines = _pull_klines_page(symbol, cursor, end_ms)
         except Exception as e:
-            log.error("  %s  ✗  %s  page %d  →  %s", source_name, symbol, page, e)
+            log.error("  %s  page %d  ✗  %s", symbol, page, e)
             break
 
-        if not raw:
+        if not raw_klines:
+            log.info("  %s  page %d  ✓  0 klines (reached end)", symbol, page)
             break
 
-        for kline in raw:
-            record = {}
-            for i, col in enumerate(settings.KLINE_COLUMNS):
-                record[col] = kline[i] if i < len(kline) else None
+        for kline in raw_klines:
+            record = {
+                col: kline[i] for i, col in enumerate(settings.KLINE_COLUMNS)
+            }
             record["symbol"] = symbol
-            record["source"] = source_name
             all_records.append(record)
 
-        # Move cursor past the last kline's open_time to avoid duplicates
-        last_open_time = raw[-1][0]
+        # Move cursor to after the last kline's open_time to avoid duplicates
+        last_open_time = raw_klines[-1][0]
         cursor = last_open_time + 1
 
+        log.info("  %s  page %d  ✓  %d klines  [%s … %s]",
+                 symbol, page, len(raw_klines), raw_klines[0][0], raw_klines[-1][0])
+
         # If we got fewer than limit, we've reached the end
-        if len(raw) < limit:
+        if len(raw_klines) < settings.BINANCE_LIMIT:
             break
 
-        time.sleep(sleep_sec)
+        time.sleep(0.1)  # Be respectful to API
 
     return all_records
 
 
-def pull_api_data() -> dict[str, dict[str, list[dict[str, Any]]]]:
+def pull_api_data() -> dict[str, list[dict[str, Any]]]:
     """
-    Pull klines from all enabled sources.
+    Pull klines for every configured symbol from backfill start date to now.
 
     Returns::
 
         {
-            "binance": {
-                "BTCUSDT": [ {timestamp, open, …, source: "binance"}, … ],
-                ...
-            },
-            "mexc": {
-                "BTCUSDT": [ {timestamp, open, …, source: "mexc"}, … ],
-                ...
-            },
+            "BTCUSDT": [ {timestamp, open, high, …}, … ],
+            "ETHUSDT": [ … ],
+            ...
         }
     """
     log.info("═══ Task 1: pull_api_data  START ═══")
-    log.info("Interval: %s | Backfill: %d days | Sources: %s",
-             settings.BINANCE_INTERVAL, settings.BACKFILL_DAYS,
-             settings.ENABLED_SOURCES)
+    data: dict[str, list[dict[str, Any]]] = {}
 
-    all_data: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for i, symbol in enumerate(settings.BINANCE_SYMBOLS, 1):
+        log.info("[%d/%d]  %s", i, len(settings.BINANCE_SYMBOLS), symbol)
+        try:
+            records = _pull_klines_full(symbol)
+            data[symbol] = records
+            log.info("  ✓  %s  →  %d klines total", symbol, len(records))
+        except Exception as e:
+            log.error("  ✗  %s  →  %s", symbol, e)
+            data[symbol] = []
 
-    for source_name in settings.ENABLED_SOURCES:
-        cfg = SOURCES[source_name]
-        log.info("── Source: %s  (%d symbols) ──", source_name, len(cfg["symbols"]))
-
-        source_data: dict[str, list[dict[str, Any]]] = {}
-
-        for i, symbol in enumerate(cfg["symbols"], 1):
-            log.info("[%d/%d]  %s  ➜  %s",
-                     i, len(cfg["symbols"]), source_name, symbol)
-
-            records = _pull_klines_full(
-                source_name=source_name,
-                base_url=cfg["base_url"],
-                symbol=symbol,
-                limit=cfg["limit"],
-                sleep_sec=cfg["sleep"],
-            )
-            source_data[symbol] = records
-
-            if records:
-                log.info("  ✓  %d klines  [%s → %s]",
-                         len(records), records[0]["timestamp"], records[-1]["timestamp"])
-            else:
-                log.warning("  ✗  EMPTY")
-
-        all_data[source_name] = source_data
-
-        total = sum(len(v) for v in source_data.values())
-        log.info("── %s DONE  (%d symbols, %d total klines) ──",
-                 source_name, len(source_data), total)
-
-    grand_total = sum(
-        len(recs)
-        for src in all_data.values()
-        for recs in src.values()
-    )
-    log.info("═══ Task 1: pull_api_data  DONE  ═══  (%d total klines across all sources)",
-             grand_total)
-    return all_data
+    total = sum(len(v) for v in data.values())
+    log.info("═══ Task 1: pull_api_data  DONE  ═══  (%d symbols, %d total klines)",
+             len(data), total)
+    return data
 
 
 if __name__ == "__main__":
     import json
 
     result = pull_api_data()
-    for source, symbols in result.items():
-        print(f"\n{'='*40}")
-        print(f"  Source: {source}")
-        print(f"{'='*40}")
-        for symbol, records in symbols.items():
-            if records:
-                print(f"  {symbol}: {len(records)} klines")
-            else:
-                print(f"  {symbol}: EMPTY")
+    for symbol, records in result.items():
+        if records:
+            print(f"\n  {symbol}: {len(records)} klines")
+            print(f"    first → {json.dumps(records[0], default=str)[:150]}…")
+            print(f"    last  → {json.dumps(records[-1], default=str)[:150]}…")
+        else:
+            print(f"\n  {symbol}: EMPTY")

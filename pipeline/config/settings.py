@@ -34,40 +34,27 @@ SPARK_SCRIPT_S3_PATH = os.getenv(
 BINANCE_BASE_URL = "https://api.binance.com/api/v3"
 
 BINANCE_SYMBOLS = [
-    "BTCUSDT",  "ETHUSDT",  "BNBUSDT",  "XRPUSDT",  "SOLUSDT",
-    "ADAUSDT",  "DOGEUSDT", "TRXUSDT",  "AVAXUSDT", "LINKUSDT",
-    "DOTUSDT",  "MATICUSDT","SHIBUSDT", "LTCUSDT",  "BCHUSDT",
-    "UNIUSDT",  "ATOMUSDT", "XLMUSDT",  "NEARUSDT", "ICPUSDT",
-    "APTUSDT",  "FILUSDT",  "VETUSDT",  "HBARUSDT", "MANAUSDT",
-    "ALGOUSDT", "QNTUSDT",  "AAVEUSDT", "EGLDUSDT", "SANDUSDT",
-    "EOSUSDT",  "THETAUSDT","AXSUSDT",  "FTMUSDT",  "RUNEUSDT",
-    "GALAUSDT", "FLOWUSDT", "XTZUSDT",  "CHZUSDT",  "ZILUSDT",
-    "ENJUSDT",  "BATUSDT",  "COMPUSDT", "SNXUSDT",  "MKRUSDT",
-    "YFIUSDT",  "SUSHIUSDT","1INCHUSDT","CRVUSDT",  "LRCUSDT",
+    "AAVEUSDT",  "ADAUSDT",   "ALGOUSDT",  "ATOMUSDT",  "AVAXUSDT",
+    "BATUSDT",   "BCHUSDT",   "BNBUSDT",   "BTCUSDT",   "CAKEUSDT",
+    "CHZUSDT",   "CRVUSDT",   "DASHUSDT",  "DEXEUSDT",  "DOGEUSDT",
+    "DOTUSDT",   "ENAUSDT",   "ENJUSDT",   "EOSUSDT",   "ETCUSDT",
+    "ETHUSDT",   "FILUSDT",   "GRTUSDT",   "HBARUSDT",  "ICPUSDT",
+    "IOSTUSDT",  "IOTAUSDT",  "LINKUSDT",  "LTCUSDT",   "MANAUSDT",
+    "NEARUSDT",  "NEOUSDT",   "QTUMUSDT",  "RVNUSDT",   "SANDUSDT",
+    "SHIBUSDT",  "SOLUSDT",   "STMXUSDT",  "SUSHIUSDT", "TFUELUSDT",
+    "THETAUSDT", "TIAUSDT",   "TRXUSDT",   "UNIUSDT",   "VETUSDT",
+    "XLMUSDT",   "XRPUSDT",   "XTZUSDT",   "ZECUSDT",   "ZILUSDT",
 ]
 
-# Kline interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d, etc.
-BINANCE_INTERVAL = "1d"
 
-# Historical backfill period (in days)
-BACKFILL_DAYS = 3 * 365  # 3 years
+# Kline interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d, etc.
+BINANCE_INTERVAL = "1m"
 
 # Max klines per request (Binance caps at 1000)
 BINANCE_LIMIT = 1000
 
-# ──────────────────────────────────────────────
-# MEXC API (free, no key required for public)
-# Same 12-field kline format as Binance
-# ──────────────────────────────────────────────
-MEXC_BASE_URL = "https://api.mexc.com/api/v3"
-MEXC_LIMIT = 500
-
-# MEXC uses same symbol format as Binance (e.g. BTCUSDT)
-# We pull the same 50 symbols from MEXC for cross-exchange comparison
-MEXC_SYMBOLS = BINANCE_SYMBOLS.copy()
-
-# Data sources to pull from (toggle on/off)
-ENABLED_SOURCES = ["binance", "mexc"]
+# Start date for kline pull (2025-09-21)
+BACKFILL_START_DATE = "2025-09-21"
 
 # ──────────────────────────────────────────────
 # Kinesis / Streaming
@@ -94,4 +81,8 @@ KLINE_COLUMNS = [
     "number_of_trades",                # 8
     "taker_buy_base_asset_volume",     # 9
     "taker_buy_quote_asset_volume",    # 10
+    "ignore",                          # 11 – Unused
 ]
+
+
+
