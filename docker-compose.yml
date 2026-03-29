@@ -83,6 +83,7 @@ services:
       STREAM_CLICKHOUSE_URL: ${STREAM_CLICKHOUSE_URL:-http://clickhouse:8123}
       STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
       STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
+      STREAM_KINESIS_ENDPOINT_URL: ${STREAM_KINESIS_ENDPOINT_URL:-}
     volumes:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas
@@ -116,6 +117,7 @@ services:
       STREAM_CLICKHOUSE_URL: ${STREAM_CLICKHOUSE_URL:-http://clickhouse:8123}
       STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
       STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
+      STREAM_KINESIS_ENDPOINT_URL: ${STREAM_KINESIS_ENDPOINT_URL:-}
     volumes:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas

@@ -77,6 +77,10 @@ def env_or_default(name: str, default: str) -> str:
     return value
 
 
+def build_default_kinesis_endpoint_url(region: str) -> str:
+    return f"https://kinesis.{region}.amazonaws.com"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Consume Binance candle events from Kinesis and write cleaned rows to Silver sinks."
@@ -136,6 +140,10 @@ def parse_args() -> argparse.Namespace:
         "--kinesis-format",
         default=env_or_default("STREAM_KINESIS_FORMAT", DEFAULT_KINESIS_FORMAT),
         choices=["aws-kinesis", "kinesis"],
+    )
+    parser.add_argument(
+        "--kinesis-endpoint-url",
+        default=os.getenv("STREAM_KINESIS_ENDPOINT_URL"),
     )
     parser.add_argument("--await-termination-seconds", type=int)
     return parser.parse_args()
@@ -444,6 +452,8 @@ def main() -> None:
                 {
                     "kinesis.streamName": args.stream_name,
                     "kinesis.region": args.region,
+                    "kinesis.endpointUrl": args.kinesis_endpoint_url
+                    or build_default_kinesis_endpoint_url(args.region),
                     "kinesis.startingposition": args.initial_position.upper(),
                 }
                 if args.kinesis_format == "aws-kinesis"
