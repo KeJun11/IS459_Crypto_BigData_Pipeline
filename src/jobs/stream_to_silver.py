@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - optional in Spark runtime images
+    def load_dotenv() -> bool:
+        return False
 from pyspark.sql import Column, DataFrame, SparkSession
 from pyspark.sql.functions import (
     col,
@@ -33,6 +39,9 @@ from pyspark.sql.types import (
 )
 
 
+load_dotenv()
+
+
 STREAM_SCHEMA = StructType(
     [
         StructField("symbol", StringType(), nullable=False),
@@ -48,21 +57,80 @@ STREAM_SCHEMA = StructType(
 )
 
 
+DEFAULT_STREAM_NAME = "crypto-ohlcv-1m"
+DEFAULT_REGION = "us-east-1"
+DEFAULT_CHECKPOINT_ROOT = "s3a://is459-crypto-datalake/checkpoints/stream_to_silver"
+DEFAULT_SILVER_OUTPUT = "s3a://is459-crypto-datalake/silver/stream"
+DEFAULT_TRIGGER_PROCESSING_TIME = "30 seconds"
+DEFAULT_CLICKHOUSE_URL = "http://clickhouse:8123"
+DEFAULT_CLICKHOUSE_DATABASE = "crypto"
+DEFAULT_CLICKHOUSE_TABLE = "raw_ohlcv_1m"
+DEFAULT_METRICS_TABLE = "pipeline_metrics"
+DEFAULT_JOB_NAME = "stream_to_silver"
+
+
+def env_or_default(name: str, default: str) -> str:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return value
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Consume Binance candle events from Kinesis and write cleaned rows to Silver sinks."
     )
-    parser.add_argument("--stream-name", default="crypto-ohlcv-1m")
-    parser.add_argument("--region", default="ap-southeast-1")
-    parser.add_argument("--initial-position", default="latest", choices=["latest", "trim_horizon"])
-    parser.add_argument("--checkpoint-root", default="s3a://is459-crypto-datalake/checkpoints/stream_to_silver")
-    parser.add_argument("--silver-output", default="s3a://is459-crypto-datalake/silver/stream")
-    parser.add_argument("--trigger-processing-time", default="30 seconds")
-    parser.add_argument("--clickhouse-url", default="http://localhost:8123")
-    parser.add_argument("--clickhouse-database", default="crypto")
-    parser.add_argument("--clickhouse-table", default="raw_ohlcv_1m")
-    parser.add_argument("--metrics-table", default="pipeline_metrics")
-    parser.add_argument("--job-name", default="stream_to_silver")
+    parser.add_argument(
+        "--stream-name",
+        default=env_or_default("KINESIS_STREAM_NAME", DEFAULT_STREAM_NAME),
+    )
+    parser.add_argument(
+        "--region",
+        default=os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", DEFAULT_REGION)),
+    )
+    parser.add_argument(
+        "--initial-position",
+        default=env_or_default("STREAM_INITIAL_POSITION", "latest"),
+        choices=["latest", "trim_horizon"],
+    )
+    parser.add_argument(
+        "--checkpoint-root",
+        default=env_or_default("STREAM_CHECKPOINT_ROOT", DEFAULT_CHECKPOINT_ROOT),
+    )
+    parser.add_argument(
+        "--silver-output",
+        default=env_or_default("STREAM_SILVER_OUTPUT", DEFAULT_SILVER_OUTPUT),
+    )
+    parser.add_argument(
+        "--trigger-processing-time",
+        default=env_or_default("STREAM_TRIGGER_PROCESSING_TIME", DEFAULT_TRIGGER_PROCESSING_TIME),
+    )
+    parser.add_argument(
+        "--clickhouse-url",
+        default=os.getenv(
+            "STREAM_CLICKHOUSE_URL",
+            os.getenv("AIRFLOW_CLICKHOUSE_URL", DEFAULT_CLICKHOUSE_URL),
+        ),
+    )
+    parser.add_argument(
+        "--clickhouse-database",
+        default=os.getenv(
+            "STREAM_CLICKHOUSE_DATABASE",
+            os.getenv("AIRFLOW_CLICKHOUSE_DATABASE", DEFAULT_CLICKHOUSE_DATABASE),
+        ),
+    )
+    parser.add_argument(
+        "--clickhouse-table",
+        default=env_or_default("STREAM_CLICKHOUSE_TABLE", DEFAULT_CLICKHOUSE_TABLE),
+    )
+    parser.add_argument(
+        "--metrics-table",
+        default=env_or_default("STREAM_METRICS_TABLE", DEFAULT_METRICS_TABLE),
+    )
+    parser.add_argument(
+        "--job-name",
+        default=env_or_default("STREAM_JOB_NAME", DEFAULT_JOB_NAME),
+    )
     parser.add_argument("--await-termination-seconds", type=int)
     return parser.parse_args()
 
@@ -204,7 +272,7 @@ def build_metric_row(
     symbol: str | None = None,
 ) -> dict[str, Any]:
     return {
-        "metric_time": datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+        "metric_time": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
         "component": "spark_stream",
         "metric_name": metric_name,
         "symbol": symbol,
@@ -256,7 +324,9 @@ def write_cleaned_batch(
     if latest_open_time is not None:
         lag_seconds = max(
             0.0,
-            (datetime.now(tz=UTC) - latest_open_time.replace(tzinfo=UTC)).total_seconds(),
+            (
+                datetime.now(tz=timezone.utc) - latest_open_time.replace(tzinfo=timezone.utc)
+            ).total_seconds(),
         )
 
     metric_rows = [
@@ -357,7 +427,7 @@ def start_invalid_metrics_query(
 
 def main() -> None:
     args = parse_args()
-    run_id = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_id = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     spark = build_spark_session(args.job_name)
     spark.sparkContext.setLogLevel("WARN")
 

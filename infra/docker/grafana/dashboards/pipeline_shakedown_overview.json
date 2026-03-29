@@ -207,6 +207,53 @@
       ],
       "title": "Aggregate Coverage",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "pluginVersion": "11.1.0",
+          "queryType": "table",
+          "rawSql": "SELECT metric_time, metric_name, ifNull(symbol, '') AS symbol, metric_value, unit, ifNull(details, '') AS details FROM crypto.pipeline_metrics WHERE metric_time >= now() - INTERVAL 24 HOUR AND job_name = 'stream_to_silver' ORDER BY metric_time DESC LIMIT 100",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent Stream Metrics",
+      "type": "table"
     }
   ],
   "refresh": "30s",
@@ -227,6 +274,6 @@
   "timezone": "browser",
   "title": "Pipeline Shakedown Overview",
   "uid": "pipeline-shakedown",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

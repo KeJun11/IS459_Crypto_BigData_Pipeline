@@ -32,7 +32,7 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: apache-airflow-providers-amazon boto3
   volumes:
     - ./airflow/dags:/opt/airflow/dags
-    - ./airflow/logs:/opt/airflow/logs
+    - airflow_logs:/opt/airflow/logs
     - ./airflow/plugins:/opt/airflow/plugins
   depends_on:
     airflow-postgres:
@@ -72,6 +72,17 @@ services:
       SPARK_SSL_ENABLED: "no"
       SPARK_DAEMON_MEMORY: 1g
       SPARK_MASTER_OPTS: -Dspark.deploy.defaultCores=2
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      KINESIS_STREAM_NAME: ${KINESIS_STREAM_NAME:-crypto-ohlcv-1m}
+      STREAM_CHECKPOINT_ROOT: ${STREAM_CHECKPOINT_ROOT:-s3a://is459-crypto-datalake/checkpoints/stream_to_silver}
+      STREAM_SILVER_OUTPUT: ${STREAM_SILVER_OUTPUT:-s3a://is459-crypto-datalake/silver/stream}
+      STREAM_CLICKHOUSE_URL: ${STREAM_CLICKHOUSE_URL:-http://clickhouse:8123}
+      STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
+      STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
     volumes:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas
@@ -94,6 +105,17 @@ services:
       SPARK_RPC_ENCRYPTION_ENABLED: "no"
       SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
       SPARK_SSL_ENABLED: "no"
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      KINESIS_STREAM_NAME: ${KINESIS_STREAM_NAME:-crypto-ohlcv-1m}
+      STREAM_CHECKPOINT_ROOT: ${STREAM_CHECKPOINT_ROOT:-s3a://is459-crypto-datalake/checkpoints/stream_to_silver}
+      STREAM_SILVER_OUTPUT: ${STREAM_SILVER_OUTPUT:-s3a://is459-crypto-datalake/silver/stream}
+      STREAM_CLICKHOUSE_URL: ${STREAM_CLICKHOUSE_URL:-http://clickhouse:8123}
+      STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
+      STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
     volumes:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas
@@ -183,3 +205,4 @@ volumes:
   clickhouse_data:
   grafana_data:
   airflow_postgres_data:
+  airflow_logs:
