@@ -152,7 +152,13 @@ def _pull_klines_page(symbol: str, start_time: int, end_time: int) -> list[list]
 
 
 def _pull_klines_full(symbol: str) -> list[dict[str, Any]]:
-    end_ms = int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000)
+    end_ms = int(
+    dt.datetime.combine(
+        dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1),
+        dt.time(23, 59),
+        tzinfo=dt.timezone.utc,
+    ).timestamp() * 1000
+    )   
     start_ms = _parse_start_time()
 
     all_records: list[dict[str, Any]] = []
