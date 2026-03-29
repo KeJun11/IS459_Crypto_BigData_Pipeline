@@ -67,6 +67,7 @@ DEFAULT_CLICKHOUSE_DATABASE = "crypto"
 DEFAULT_CLICKHOUSE_TABLE = "raw_ohlcv_1m"
 DEFAULT_METRICS_TABLE = "pipeline_metrics"
 DEFAULT_JOB_NAME = "stream_to_silver"
+DEFAULT_KINESIS_FORMAT = "aws-kinesis"
 
 
 def env_or_default(name: str, default: str) -> str:
@@ -130,6 +131,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--job-name",
         default=env_or_default("STREAM_JOB_NAME", DEFAULT_JOB_NAME),
+    )
+    parser.add_argument(
+        "--kinesis-format",
+        default=env_or_default("STREAM_KINESIS_FORMAT", DEFAULT_KINESIS_FORMAT),
+        choices=["aws-kinesis", "kinesis"],
     )
     parser.add_argument("--await-termination-seconds", type=int)
     return parser.parse_args()
@@ -432,10 +438,22 @@ def main() -> None:
     spark.sparkContext.setLogLevel("WARN")
 
     raw_stream_df = (
-        spark.readStream.format("kinesis")
-        .option("streamName", args.stream_name)
-        .option("region", args.region)
-        .option("initialPosition", args.initial_position)
+        spark.readStream.format(args.kinesis_format)
+        .options(
+            **(
+                {
+                    "kinesis.streamName": args.stream_name,
+                    "kinesis.region": args.region,
+                    "kinesis.startingposition": args.initial_position.upper(),
+                }
+                if args.kinesis_format == "aws-kinesis"
+                else {
+                    "streamName": args.stream_name,
+                    "region": args.region,
+                    "initialPosition": args.initial_position,
+                }
+            )
+        )
         .load()
     )
 
