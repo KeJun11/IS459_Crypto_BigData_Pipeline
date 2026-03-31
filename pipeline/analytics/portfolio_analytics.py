@@ -1,10 +1,8 @@
 """
-Pure portfolio analytics helpers used by Task 6.
+Pure portfolio analytics helpers consisting of finance and math logic used by Task 6.
 """
 
 from __future__ import annotations
-
-
 
 from dataclasses import dataclass
 from datetime import date

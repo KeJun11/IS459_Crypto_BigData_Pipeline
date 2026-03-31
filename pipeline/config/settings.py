@@ -23,7 +23,7 @@ S3_RAW_PREFIX = "raw/"
 S3_CLEANED_BUCKET = os.getenv("S3_CLEANED_BUCKET", 'is459-crypto-raw-data') 
 
 CLICKHOUSE_PROTOCOL = os.getenv("CLICKHOUSE_PROTOCOL", "http")
-CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "127.0.0.1")
+CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "127.0.0.1") #change to clickhouse EC2 public ip
 CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CLICKHOUSE_DB = os.getenv(
     "CLICKHOUSE_DB",
