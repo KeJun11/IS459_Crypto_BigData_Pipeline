@@ -14,7 +14,7 @@ import requests
 
 from pipeline.config import portfolio_settings
 from pipeline.config import settings
-from pipeline.tasks.portfolio_analytics import (
+from pipeline.analytics.portfolio_analytics import (
     BacktestPoint,
     PortfolioSummary,
     SimulationResult,

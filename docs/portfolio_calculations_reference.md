@@ -1,7 +1,7 @@
 # Portfolio Calculations Reference
 
 This document explains the main portfolio calculations used in
-[`pipeline/tasks/portfolio_analytics.py`](/c:/big_data/Crypto_Pipeline_Grp4/IS459_Crypto_BigData_Pipeline/pipeline/tasks/portfolio_analytics.py)
+[`pipeline/analytics/portfolio_analytics.py`](/c:/big_data/Crypto_Pipeline_Grp4/IS459_Crypto_BigData_Pipeline/pipeline/analytics/portfolio_analytics.py)
 and
 [`pipeline/tasks/compute_portfolio_analytics.py`](/c:/big_data/Crypto_Pipeline_Grp4/IS459_Crypto_BigData_Pipeline/pipeline/tasks/compute_portfolio_analytics.py).
 
