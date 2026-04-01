@@ -51,4 +51,5 @@ portfolio_analyse = PythonOperator(
 )
 
 # Dependency Flow
-daily_ingest >> gluecatalog_update >> spark_process >> clickhouse_store >> portfolio_analyse
+daily_ingest >> gluecatalog_update
+daily_ingest >> spark_process >> clickhouse_store >> portfolio_analyse
