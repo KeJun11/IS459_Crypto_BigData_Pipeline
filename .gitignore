@@ -208,3 +208,8 @@ __marimo__/
 
 
 pipeline/spark/initial_transform_load.ipynb
+
+# Airflow Default Folders
+airflow/config/
+airflow/logs/
+airflow/plugins/
