@@ -1,4 +1,6 @@
 #!/bin/bash
+# Should be under "/usr/local/bin" in EC2 instance & set as executable (sudo chmod +x airflow-start.sh)
+
 LOG_FILE="/var/log/airflow-startup.log"
 PROJECT_DIR="/home/ec2-user/IS459_Crypto_BigData_Pipeline"
 REPO_URL="https://github.com/KeJun11/IS459_Crypto_BigData_Pipeline.git"

@@ -47,8 +47,7 @@ CLICKHOUSE_SOURCE_URL = os.getenv(
 
 GLUE_DATABASE = os.getenv("GLUE_DATABASE")
 
-
-EMR_CLUSTER_ID = os.getenv("EMR_CLUSTER_ID")
+EMR_CLUSTER_NAME = os.getenv("EMR_CLUSTER_NAME")
 SPARK_SCRIPT_S3_PATH = os.getenv(
     "SPARK_SCRIPT_S3_PATH",
     f"s3://{S3_BUCKET_RAW}/scripts/transform.py",
