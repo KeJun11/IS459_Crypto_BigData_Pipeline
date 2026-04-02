@@ -21,3 +21,16 @@ def get_glue_client():
 
 def get_emr_client():
     return _session().client("emr")
+
+def get_emr_cluster_id(cluster_name = settings.EMR_CLUSTER_NAME):
+    client = get_emr_client()
+    
+    # List clusters (you can filter by state if needed)
+    paginator = client.get_paginator('list_clusters')
+    
+    for page in paginator.paginate(ClusterStates=['RUNNING', 'WAITING', 'STARTING']):
+        for cluster in page.get('Clusters', []):
+            if cluster['Name'] == cluster_name:
+                return cluster['Id']
+    
+    raise ValueError(f"EMR cluster '{cluster_name}' not found in RUNNING/WAITING/STARTING state")

@@ -12,7 +12,7 @@ import time
 
 from pipeline.config import settings
 from pipeline.utils.logger import get_logger
-from pipeline.utils.aws_helpers import get_emr_client
+from pipeline.utils.aws_helpers import get_emr_client, get_emr_cluster_id
 
 log = get_logger("task4.run_spark_job")
 
@@ -32,6 +32,8 @@ def run_spark_job() -> str:
     log.info("═══ Task 4: run_spark_job  START ═══")
     emr = get_emr_client()
 
+    cluster_id = get_emr_cluster_id()
+
     step = {
         "Name": "transform-binance-klines",
         "ActionOnFailure": "CONTINUE",
@@ -49,9 +51,9 @@ def run_spark_job() -> str:
         },
     }
 
-    log.info("Submitting step to EMR cluster %s", settings.EMR_CLUSTER_ID)
+    log.info("Submitting step to EMR cluster %s", cluster_id)
     response = emr.add_job_flow_steps(
-        JobFlowId=settings.EMR_CLUSTER_ID,
+        JobFlowId=cluster_id,
         Steps=[step],
     )
     step_id = response["StepIds"][0]
@@ -59,7 +61,7 @@ def run_spark_job() -> str:
 
     for i in range(MAX_POLLS):
         desc = emr.describe_step(
-            ClusterId=settings.EMR_CLUSTER_ID,
+            ClusterId=cluster_id,
             StepId=step_id,
         )
         state = desc["Step"]["Status"]["State"]
