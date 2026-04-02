@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import sys
 import os
@@ -15,11 +15,16 @@ from pipeline.tasks.load_to_clickhouse import load_to_clickhouse
 from pipeline.tasks.compute_portfolio_analytics import compute_portfolio_analytics
 
 # DAG Configuration
-default_args = {'owner': 'data-team', 'retries': 2}
+default_args = {
+    'owner': 'airflow', 
+    'retries': 2, 
+    'retry_delay': timedelta(minutes=5),
+    }
 dag = DAG(
-    name = 'crypto_batch_update', 
+    dag_id = 'crypto_batch_update', 
     default_args=default_args, 
-    schedule_interval='@daily', # Runs daily at midnight
+    start_date=datetime(2026,4,2),
+    schedule='@daily', # Runs daily at midnight
     catchup=False)
 
 # Tasks
