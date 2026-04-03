@@ -27,7 +27,7 @@ import requests
 from pipeline.config import settings
 from pipeline.utils.logger import get_logger
 
-log = get_logger("task1.pull_api_parquet")
+log = get_logger("task.pull_api_parquet")
 
 
 # ── Type mapping (single source of truth) ──────────────────────────────────

@@ -54,7 +54,7 @@ SPARK_SCRIPT_S3_PATH = os.getenv(
 )
 
 
-BINANCE_BASE_URL = "https://api.binance.com/api/v3"
+BINANCE_BASE_URL = "https://api.binance.us/api/v3"
 
 BINANCE_SYMBOLS = [
     "AAVEUSDT",  "ADAUSDT",   "ALGOUSDT",  "ATOMUSDT",  "AVAXUSDT",
