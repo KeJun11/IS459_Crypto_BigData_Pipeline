@@ -1,5 +1,5 @@
 """
-Task 3 – update_catalog
+update_catalog
 ========================
 Creates/updates two Glue tables for Parquet kline data:
 

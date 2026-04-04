@@ -1,5 +1,5 @@
 """
-Task 1 – pull_api_parquet (daily incremental)
+pull_api_parquet (daily incremental)
 ==============================================
 Fetches the previous day's 1-minute kline data from Binance for ALL
 symbols in settings.BINANCE_SYMBOLS and uploads everything into a

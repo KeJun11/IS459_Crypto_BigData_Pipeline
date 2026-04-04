@@ -1,5 +1,5 @@
 """
-Task 1 – pull_api_data
+pull_api_data
 ======================
 Pulls 1-minute kline (candlestick) data from the Binance public API
 for every symbol in settings.BINANCE_SYMBOLS, backfilling from

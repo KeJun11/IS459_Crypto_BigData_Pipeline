@@ -81,18 +81,18 @@ BACKFILL_START_DATE = "2025-09-21"
 
 # Column names matching Binance kline response (index 0–11)
 KLINE_COLUMNS = [
-    "timestamp",                       # 0  – Kline open time (ms)
-    "open",                            # 1
-    "high",                            # 2
-    "low",                             # 3
-    "close",                           # 4
-    "volume",                          # 5  – Base asset volume
-    "close_time",                      # 6  – Kline close time (ms)
-    "quote_asset_volume",              # 7
-    "number_of_trades",                # 8
-    "taker_buy_base_asset_volume",     # 9
-    "taker_buy_quote_asset_volume",    # 10
-    "ignore",                          # 11 – Unused
+    "timestamp",                      
+    "open",                            
+    "high",                            
+    "low",                             
+    "close",                           
+    "volume",                         
+    "close_time",                      
+    "quote_asset_volume",              
+    "number_of_trades",                
+    "taker_buy_base_asset_volume",     
+    "taker_buy_quote_asset_volume",    
+    "ignore",                         
 ]
 
 
