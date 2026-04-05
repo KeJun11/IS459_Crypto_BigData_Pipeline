@@ -1,8 +1,5 @@
 """
 daily_ingest.py
-────────────────────────────────────────────────────────────────────────────────
-Read today's records from bronze/binance2/, clean them, and append to
-s3a://<BUCKET>/cleaned/bq2_daily_prices/.
 """
 
 from datetime import date, timedelta
@@ -13,49 +10,36 @@ from pyspark.sql.types import DoubleType
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 BUCKET = "is459-crypto-raw-data"
-TODAY = str(date.today() - timedelta(days=1))  # yesterday's complete data
+TODAY = str(date.today() - timedelta(days=1))
 
 # ── SparkSession ──────────────────────────────────────────────────────────────
 spark = (
     SparkSession.builder.appName("daily-ingest")
-    .config(
-        "spark.hadoop.fs.s3a.aws.credentials.provider",
-        "com.amazonaws.auth.InstanceProfileCredentialsProvider",
-    )
-    .config("spark.hadoop.fs.s3a.connection.maximum", "200")
-    .config("spark.hadoop.fs.s3a.threads.max", "200")
-    .config("spark.hadoop.fs.s3a.readahead.range", "8388608")
-    .config("spark.hadoop.fs.s3a.block.size", "134217728")
-    .config("spark.hadoop.fs.s3a.input.fadvise", "sequential")
-    .config("spark.hadoop.fs.s3a.fast.upload", "true")
-    .config("spark.hadoop.fs.s3a.fast.upload.buffer", "bytebuffer")
-    .config("spark.hadoop.fs.s3a.multipart.size", "67108864")
     .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     .config("spark.kryoserializer.buffer.max", "512m")
     .config("spark.memory.fraction", "0.8")
     .config("spark.memory.storageFraction", "0.1")
     .config("spark.memory.offHeap.enabled", "true")
-    .config("spark.memory.offHeap.size", "2g")
-    .config("spark.reducer.maxSizeInFlight", "100663296")
-    .config("spark.shuffle.localDisk.file.output.buffer", "5242880")
+    .config("spark.memory.offHeap.size", "2147483648")
     .config("spark.sql.adaptive.enabled", "true")
     .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
     .config("spark.sql.adaptive.advisoryPartitionSizeInBytes", "134217728")
     .config("spark.sql.files.maxPartitionBytes", "134217728")
-    .config("spark.sql.files.openCostInBytes", "67108864")
-    .config("spark.network.timeout", "600")
     .config("spark.sql.broadcastTimeout", "600")
     .getOrCreate()
 )
 
+BINANCE2_BASE = f"s3://{BUCKET}/bronze/binance2"
+DAILY_OUT = f"s3://{BUCKET}/cleaned/bq2_daily_prices"
+TODAY_PATH = f"{BINANCE2_BASE}/{TODAY}"
+
 print(f"Spark             : {spark.version}")
 print(f"Bucket (raw)      : {BUCKET}")
 print(f"Ingesting date    : {TODAY}")
+print(f"Reading from      : {TODAY_PATH}")
 print("SparkSession ready")
 
-# ── § 1  Read bronze/binance2/ ────────────────────────────────────────────────
-BINANCE2_BASE = f"s3a://{BUCKET}/bronze/binance2"
-
+# ── § 1  Read today's partition directly ──────────────────────────────────────
 ORDERED_COLS = [
     "timestamp",
     "symbol",
@@ -72,8 +56,7 @@ ORDERED_COLS = [
 ]
 
 binance_raw = (
-    spark.read.option("basePath", BINANCE2_BASE)
-    .parquet(BINANCE2_BASE)
+    spark.read.parquet(TODAY_PATH)
     .select(
         F.col("timestamp"),
         F.col("symbol"),
@@ -91,8 +74,7 @@ binance_raw = (
     .select(ORDERED_COLS)
 )
 
-# ── § 2  Filter to today ───────────────────────────────────────────────────────
-today_df = binance_raw.filter(F.to_date("timestamp") == F.lit(TODAY))
+today_df = binance_raw
 print(f"Filtered to date = {TODAY}")
 
 # ── § 3  Clean ────────────────────────────────────────────────────────────────
@@ -117,8 +99,6 @@ today_df = today_df.filter(
 )
 
 # ── § 5  Write ────────────────────────────────────────────────────────────────
-DAILY_OUT = f"s3a://{BUCKET}/cleaned/bq2_daily_prices"
-
 (
     today_df.withColumn("date", F.to_date("timestamp"))
     .write.mode("append")

@@ -41,12 +41,13 @@ def run_spark_job() -> str:
             "Jar": "command-runner.jar",
             "Args": [
                 "spark-submit",
-                "--deploy-mode", "cluster",
-                "--master", "yarn",
-                "--conf", "spark.sql.catalogImplementation=hive",
+                "--deploy-mode",
+                "cluster",
+                "--master",
+                "yarn",
+                "--conf",
+                "spark.sql.catalogImplementation=hive",
                 settings.SPARK_SCRIPT_S3_PATH,
-                "--source-db", settings.GLUE_DATABASE,
-                "--output-bucket", settings.S3_BUCKET_RAW,
             ],
         },
     }
@@ -77,8 +78,11 @@ def run_spark_job() -> str:
 
     if state != "COMPLETED":
         failure = desc["Step"]["Status"].get("FailureDetails", {})
-        log.error("Step did not complete: %s – %s",
-                  state, failure.get("Message", "no details"))
+        log.error(
+            "Step did not complete: %s – %s",
+            state,
+            failure.get("Message", "no details"),
+        )
     else:
         log.info("Spark job finished successfully")
 

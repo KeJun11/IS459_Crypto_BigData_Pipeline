@@ -20,10 +20,12 @@ AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 S3_BUCKET_RAW = os.getenv("S3_BUCKET_RAW")
 S3_RAW_PREFIX = "raw/"
 
-S3_CLEANED_BUCKET = os.getenv("S3_CLEANED_BUCKET", 'is459-crypto-raw-data') 
+S3_CLEANED_BUCKET = os.getenv("S3_CLEANED_BUCKET", "is459-crypto-raw-data")
 
 CLICKHOUSE_PROTOCOL = os.getenv("CLICKHOUSE_PROTOCOL", "http")
-CLICKHOUSE_HOST = os.getenv("CLICKHOUSE_HOST", "127.0.0.1") #change to clickhouse EC2 public ip
+CLICKHOUSE_HOST = os.getenv(
+    "CLICKHOUSE_HOST", "127.0.0.1"
+)  # change to clickhouse EC2 public ip
 CLICKHOUSE_PORT = int(os.getenv("CLICKHOUSE_PORT", "8123"))
 CLICKHOUSE_DB = os.getenv(
     "CLICKHOUSE_DB",
@@ -50,23 +52,63 @@ GLUE_DATABASE = os.getenv("GLUE_DATABASE")
 EMR_CLUSTER_NAME = os.getenv("EMR_CLUSTER_NAME")
 SPARK_SCRIPT_S3_PATH = os.getenv(
     "SPARK_SCRIPT_S3_PATH",
-    f"s3://{S3_BUCKET_RAW}/scripts/transform.py",
+    f"s3://{S3_BUCKET_RAW}/scripts/daily_ingest.py",
 )
 
 
 BINANCE_BASE_URL = "https://api.binance.us/api/v3"
 
 BINANCE_SYMBOLS = [
-    "AAVEUSDT",  "ADAUSDT",   "ALGOUSDT",  "ATOMUSDT",  "AVAXUSDT",
-    "BATUSDT",   "BCHUSDT",   "BNBUSDT",   "BTCUSDT",   "CAKEUSDT",
-    "CHZUSDT",   "CRVUSDT",   "DASHUSDT",  "DEXEUSDT",  "DOGEUSDT",
-    "DOTUSDT",   "ENAUSDT",   "ENJUSDT",   "EOSUSDT",   "ETCUSDT",
-    "ETHUSDT",   "FILUSDT",   "GRTUSDT",   "HBARUSDT",  "ICPUSDT",
-    "IOSTUSDT",  "IOTAUSDT",  "LINKUSDT",  "LTCUSDT",   "MANAUSDT",
-    "NEARUSDT",  "NEOUSDT",   "QTUMUSDT",  "RVNUSDT",   "SANDUSDT",
-    "SHIBUSDT",  "SOLUSDT",   "STMXUSDT",  "SUSHIUSDT", "TFUELUSDT",
-    "THETAUSDT", "TIAUSDT",   "TRXUSDT",   "UNIUSDT",   "VETUSDT",
-    "XLMUSDT",   "XRPUSDT",   "XTZUSDT",   "ZECUSDT",   "ZILUSDT",
+    "AAVEUSDT",
+    "ADAUSDT",
+    "ALGOUSDT",
+    "ATOMUSDT",
+    "AVAXUSDT",
+    "BATUSDT",
+    "BCHUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "CAKEUSDT",
+    "CHZUSDT",
+    "CRVUSDT",
+    "DASHUSDT",
+    "DEXEUSDT",
+    "DOGEUSDT",
+    "DOTUSDT",
+    "ENAUSDT",
+    "ENJUSDT",
+    "EOSUSDT",
+    "ETCUSDT",
+    "ETHUSDT",
+    "FILUSDT",
+    "GRTUSDT",
+    "HBARUSDT",
+    "ICPUSDT",
+    "IOSTUSDT",
+    "IOTAUSDT",
+    "LINKUSDT",
+    "LTCUSDT",
+    "MANAUSDT",
+    "NEARUSDT",
+    "NEOUSDT",
+    "QTUMUSDT",
+    "RVNUSDT",
+    "SANDUSDT",
+    "SHIBUSDT",
+    "SOLUSDT",
+    "STMXUSDT",
+    "SUSHIUSDT",
+    "TFUELUSDT",
+    "THETAUSDT",
+    "TIAUSDT",
+    "TRXUSDT",
+    "UNIUSDT",
+    "VETUSDT",
+    "XLMUSDT",
+    "XRPUSDT",
+    "XTZUSDT",
+    "ZECUSDT",
+    "ZILUSDT",
 ]
 
 
@@ -81,19 +123,16 @@ BACKFILL_START_DATE = "2025-09-21"
 
 # Column names matching Binance kline response (index 0–11)
 KLINE_COLUMNS = [
-    "timestamp",                      
-    "open",                            
-    "high",                            
-    "low",                             
-    "close",                           
-    "volume",                         
-    "close_time",                      
-    "quote_asset_volume",              
-    "number_of_trades",                
-    "taker_buy_base_asset_volume",     
-    "taker_buy_quote_asset_volume",    
-    "ignore",                         
+    "timestamp",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "close_time",
+    "quote_asset_volume",
+    "number_of_trades",
+    "taker_buy_base_asset_volume",
+    "taker_buy_quote_asset_volume",
+    "ignore",
 ]
-
-
-
