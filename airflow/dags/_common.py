@@ -15,6 +15,22 @@ def get_setting(name: str, default: str = "") -> str:
     return Variable.get(name, default_var=default)
 
 
+def get_first_setting(names: list[str], default: str = "") -> str:
+    for name in names:
+        value = get_setting(name, "")
+        if value:
+            return value
+    return default
+
+
+def build_clickhouse_http_url(host_names: list[str], port_names: list[str], default_port: str = "8123") -> str:
+    host = get_first_setting(host_names, "")
+    if not host:
+        return ""
+    port = get_first_setting(port_names, default_port)
+    return f"http://{host}:{port}"
+
+
 AWS_CONN_ID = get_setting("AIRFLOW_AWS_CONN_ID", "aws_default")
 AWS_REGION = get_setting("AWS_DEFAULT_REGION", "us-east-1")
 S3_BUCKET = get_setting("BATCH_S3_BUCKET", "")
@@ -26,9 +42,21 @@ EMR_LOG_URI = get_setting("AIRFLOW_EMR_SERVERLESS_LOG_URI", "")
 BRONZE_TO_SILVER_ENTRYPOINT = get_setting("AIRFLOW_BRONZE_TO_SILVER_ENTRYPOINT", "s3://replace-me/jobs/bronze_to_silver_batch.py")
 SILVER_TO_GOLD_ENTRYPOINT = get_setting("AIRFLOW_SILVER_TO_GOLD_ENTRYPOINT", "s3://replace-me/jobs/silver_to_gold_batch.py")
 EMR_PY_FILES = [value.strip() for value in get_setting("AIRFLOW_EMR_PY_FILES", "").split(",") if value.strip()]
-CLICKHOUSE_URL = get_setting("AIRFLOW_CLICKHOUSE_URL", "")
-CLICKHOUSE_VALIDATION_URL = get_setting("AIRFLOW_CLICKHOUSE_VALIDATION_URL", CLICKHOUSE_URL)
-CLICKHOUSE_DATABASE = get_setting("AIRFLOW_CLICKHOUSE_DATABASE", "crypto")
+CLICKHOUSE_URL = get_first_setting(
+    ["AIRFLOW_CLICKHOUSE_URL"],
+    build_clickhouse_http_url(
+        ["AIRFLOW_CLICKHOUSE_HOST", "SHARED_CLICKHOUSE_HOST"],
+        ["AIRFLOW_CLICKHOUSE_PORT", "SHARED_CLICKHOUSE_PORT"],
+    ),
+)
+CLICKHOUSE_VALIDATION_URL = get_first_setting(
+    ["AIRFLOW_CLICKHOUSE_VALIDATION_URL"],
+    CLICKHOUSE_URL,
+)
+CLICKHOUSE_DATABASE = get_first_setting(
+    ["AIRFLOW_CLICKHOUSE_DATABASE", "SHARED_CLICKHOUSE_DATABASE"],
+    "crypto",
+)
 TRACKED_SYMBOLS = [value.strip() for value in get_setting("AIRFLOW_TRACKED_SYMBOLS", "BTCUSDT,ETHUSDT,SOLUSDT").split(",") if value.strip()]
 SKIP_BATCH_CLICKHOUSE = get_setting("AIRFLOW_BATCH_SKIP_CLICKHOUSE", "false").lower() in {"1", "true", "yes"}
 BASE_SPARK_SUBMIT_PARAMETERS = get_setting(

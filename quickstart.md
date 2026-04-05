@@ -274,7 +274,7 @@ uv run scripts/run_stream_to_silver.py
 Consumer on EC2 with fresh checkpoint:
 
 ```bash
-uv run scripts/run_stream_to_silver.py -- --checkpoint-root s3a://is459-crypto-datalake/checkpoints/stream_to_silver_v2
+uv run scripts/run_stream_to_silver.py --checkpoint-root s3a://is459-crypto-datalake/checkpoints/stream_to_silver_v2
 ```
 
 Producer on your laptop:

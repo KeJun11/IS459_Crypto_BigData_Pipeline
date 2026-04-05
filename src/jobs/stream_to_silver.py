@@ -77,6 +77,25 @@ def env_or_default(name: str, default: str) -> str:
     return value
 
 
+def env_first(names: list[str], default: str = "") -> str:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and value != "":
+            return value
+    return default
+
+
+def build_default_clickhouse_url() -> str:
+    host = env_first(["STREAM_CLICKHOUSE_HOST", "SHARED_CLICKHOUSE_HOST", "AIRFLOW_CLICKHOUSE_HOST"], "")
+    if not host:
+        return DEFAULT_CLICKHOUSE_URL
+    port = env_first(
+        ["STREAM_CLICKHOUSE_PORT", "SHARED_CLICKHOUSE_PORT", "AIRFLOW_CLICKHOUSE_PORT"],
+        "8123",
+    )
+    return f"http://{host}:{port}"
+
+
 def build_default_kinesis_endpoint_url(region: str) -> str:
     return f"https://kinesis.{region}.amazonaws.com"
 
@@ -112,16 +131,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--clickhouse-url",
-        default=os.getenv(
-            "STREAM_CLICKHOUSE_URL",
-            os.getenv("AIRFLOW_CLICKHOUSE_URL", DEFAULT_CLICKHOUSE_URL),
+        default=env_first(
+            ["STREAM_CLICKHOUSE_URL", "AIRFLOW_CLICKHOUSE_URL"],
+            build_default_clickhouse_url(),
         ),
     )
     parser.add_argument(
         "--clickhouse-database",
-        default=os.getenv(
-            "STREAM_CLICKHOUSE_DATABASE",
-            os.getenv("AIRFLOW_CLICKHOUSE_DATABASE", DEFAULT_CLICKHOUSE_DATABASE),
+        default=env_first(
+            ["STREAM_CLICKHOUSE_DATABASE", "AIRFLOW_CLICKHOUSE_DATABASE", "SHARED_CLICKHOUSE_DATABASE"],
+            DEFAULT_CLICKHOUSE_DATABASE,
         ),
     )
     parser.add_argument(
