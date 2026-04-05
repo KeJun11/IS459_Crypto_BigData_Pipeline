@@ -191,6 +191,38 @@ Before the EMR-backed DAGs will run successfully, set these environment variable
 
 The DAGs are scaffolded to submit EMR Serverless jobs; they do not run the Spark batch jobs locally inside the Airflow containers.
 
+## Streaming Consumer Runtime
+
+The live streaming consumer runs on the EC2 Spark Docker stack, not on EMR Serverless.
+
+Runtime variables used by [stream_to_silver.py](C:\Users\limke_msg9rxa\Downloads\Courses\big-data\IS459_Crypto_BigData_Pipeline\src\jobs\stream_to_silver.py):
+- `KINESIS_STREAM_NAME`
+- `AWS_DEFAULT_REGION`
+- `STREAM_CHECKPOINT_ROOT`
+- `STREAM_SILVER_OUTPUT`
+- `STREAM_CLICKHOUSE_URL`
+- `STREAM_TRIGGER_PROCESSING_TIME`
+- `STREAM_INITIAL_POSITION`
+- `STREAM_KINESIS_FORMAT`
+- `STREAM_KINESIS_ENDPOINT_URL`
+- `STREAM_SPARK_PACKAGES` or `STREAM_EXTRA_JARS` for the Kinesis connector dependency
+
+The dedicated launcher is [run_stream_to_silver.py](C:\Users\limke_msg9rxa\Downloads\Courses\big-data\IS459_Crypto_BigData_Pipeline\scripts\run_stream_to_silver.py). It runs `spark-submit` inside the `crypto-spark-master` container and passes through any extra `stream_to_silver.py` arguments.
+
+Example:
+
+```powershell
+python scripts/run_stream_to_silver.py --print-command
+python scripts/run_stream_to_silver.py -- --await-termination-seconds 120
+```
+
+If your Spark image does not already have the Kinesis connector, set one of these before launching the consumer:
+- `STREAM_SPARK_PACKAGES=<connector maven coordinates>`
+- `STREAM_EXTRA_JARS=<comma-separated jar paths or URIs>`
+
+The official AWS connector uses the `aws-kinesis` source format. [stream_to_silver.py](C:\Users\limke_msg9rxa\Downloads\Courses\big-data\IS459_Crypto_BigData_Pipeline\src\jobs\stream_to_silver.py) now defaults to that via `STREAM_KINESIS_FORMAT=aws-kinesis`.
+If `STREAM_KINESIS_ENDPOINT_URL` is not set, the consumer derives `https://kinesis.<region>.amazonaws.com` from the configured region.
+
 ## Kaggle Seed Bronze Conversion
 
 The Kaggle CSV is treated as one-time seed data. Convert it into Bronze parquet first, then use that Bronze parquet as the input to the existing batch jobs.
@@ -281,6 +313,30 @@ Stage 2: EC2 + AWS shakedown
 - Validate row counts in ClickHouse before unpausing the daily schedule.
 
 Stage 3: Streaming visibility
-- Start the stream producer and `stream_to_silver` consumer as usual.
+- Start the EC2 Docker stack with ClickHouse, Grafana, and Spark running.
+- Set `STREAM_CLICKHOUSE_URL=http://clickhouse:8123` in the EC2 runtime so the Spark container writes to the ClickHouse service on the Docker network.
+- Start the consumer first:
+
+```powershell
+python scripts/run_stream_to_silver.py
+```
+
+- In a second shell, start a bounded producer run:
+
+```powershell
+python -m src.ingestion.stream_producer --max-records 15 --log-level INFO
+```
+
 - Watch the `Pipeline Shakedown Overview` dashboard for advancing raw timestamps, per-minute row counts, and new pipeline metrics.
-- Use direct ClickHouse queries only as a fallback if Grafana looks stale.
+- If Grafana looks stale, use these ClickHouse checks:
+
+```powershell
+docker exec crypto-clickhouse clickhouse-client --query "SELECT symbol, max(open_time) AS latest_open_time, count() AS total_rows FROM crypto.raw_ohlcv_1m GROUP BY symbol ORDER BY symbol"
+docker exec crypto-clickhouse clickhouse-client --query "SELECT metric_time, metric_name, metric_value, job_name FROM crypto.pipeline_metrics WHERE job_name = 'stream_to_silver' ORDER BY metric_time DESC LIMIT 20"
+```
+
+- Confirm parquet files land under the stream Silver prefix in S3:
+
+```powershell
+aws s3 ls s3://is459-crypto-datalake/silver/stream/ --recursive
+```

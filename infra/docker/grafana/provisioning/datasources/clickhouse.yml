@@ -5,15 +5,15 @@ datasources:
     uid: clickhouse
     type: grafana-clickhouse-datasource
     access: proxy
-    url: http://clickhouse:8123
+    url: http://3.234.211.100:8123
     isDefault: true
     jsonData:
-      defaultDatabase: crypto
-      host: clickhouse
+      defaultDatabase: is459_streaming_kj
+      host: 3.234.211.100
       port: 8123
       protocol: http
       secure: false
-      server: clickhouse
+      server: 3.234.211.100
       username: default
     secureJsonData:
       password: ""

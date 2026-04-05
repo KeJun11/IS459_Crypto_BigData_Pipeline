@@ -19,6 +19,7 @@ def run_clickhouse_query(
     query: str,
     data: bytes | None = None,
     multiquery: bool = False,
+    params: dict[str, str] | None = None,
 ) -> str:
     if connection.docker_container:
         command = [
@@ -42,8 +43,11 @@ def run_clickhouse_query(
             raise RuntimeError(f"ClickHouse docker query failed: {stderr}")
         return result.stdout.decode("utf-8")
 
+    query_params = {"query": query}
+    if params:
+        query_params.update(params)
     request = urllib.request.Request(
-        url=f"{connection.url}/?query={urllib.parse.quote(query)}",
+        url=f"{connection.url}/?{urllib.parse.urlencode(query_params)}",
         data=data,
         method="POST",
     )

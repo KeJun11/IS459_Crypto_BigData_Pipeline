@@ -19,24 +19,27 @@
 - [x] Producer supports dry-run and real Kinesis publish
 - [x] Stream producer smoke test exists in [test_stream_producer_workflow.py](/c:/Users/limke_msg9rxa/Downloads/Courses/big-data/IS459_Crypto_BigData_Pipeline/scripts/test_stream_producer_workflow.py)
 - [x] Stream producer live publish test has worked
+- [x] Phase 0: AWS Kinesis Data Stream exists and is active in the intended region/account
+- [x] Phase 0: Firehose delivery stream is created and writing stream records to S3 Bronze
+- [x] Phase 4: [stream_to_silver.py](/c:/Users/limke_msg9rxa/Downloads/Courses/big-data/IS459_Crypto_BigData_Pipeline/src/jobs/stream_to_silver.py) Spark Structured Streaming job exists
+- [x] Phase 4: JSON parse/validation and malformed-row counting are implemented
+- [x] Phase 4: Deduplicate with watermark is implemented
+- [x] Phase 4: ClickHouse Silver sink logic is implemented in code
+- [x] Phase 4: S3 Silver parquet sink logic is implemented in code
+- [x] Phase 4: S3 checkpoint configuration is implemented in code
+- [x] Phase 4: Stream-to-silver smoke test exists and has passed
 
 **Partially Completed / Needs Confirmation**
-- [ ] Phase 0: Confirm AWS Kinesis Data Stream exists and is active in the intended region/account
-- [ ] Phase 0: Confirm Firehose delivery stream is created and writing stream records to S3 Bronze
-- [ ] Phase 0: Confirm IAM permissions are correct for Kinesis, Firehose, and S3
+- [ ] Phase 0: Confirm IAM permissions are correct for the Spark consumer path (Kinesis, Firehose archive access, S3 Silver, checkpoints)
 - [ ] Phase 0: Confirm S3 Bronze/Silver prefix layout matches roadmap
 - [ ] Phase 2: Confirm Glue Schema Registry is actually set up in AWS
 - [ ] Phase 2: Confirm producer is integrated with Glue Schema Registry, not just local schema validation
+- [ ] Phase 4: Live Spark read from Kinesis works on EC2
+- [ ] Phase 4: Live rows land in ClickHouse `raw_ohlcv_1m`
+- [ ] Phase 4: Live Silver parquet lands in S3 Silver
+- [ ] Phase 4: Live `pipeline_metrics` for streaming appear in ClickHouse and Grafana
 
-**Not Started**
-- [x] Phase 4: `stream_to_silver.py` Spark Structured Streaming job
-- [ ] Phase 4: Read from Kinesis with Spark
-- [ ] Phase 4: Parse/validate/drop malformed rows
-- [ ] Phase 4: Deduplicate with watermark
-- [ ] Phase 4: Write Silver rows to ClickHouse
-- [ ] Phase 4: Write cleaned Parquet to S3 Silver
-- [ ] Phase 4: Configure checkpointing to S3
-
+**Remaining Roadmap Phases**
 - [x] Phase 5: ClickHouse materialized views for returns, MA, volatility
 - [x] Phase 6: EMR Serverless batch jobs
 - [x] Phase 7: Airflow DAGs
@@ -45,6 +48,6 @@
 - [ ] Phase 10: Monitoring and observability
 
 **Recommended Next Task For Another Agent**
-- [ ] Build [stream_to_silver.py](/c:/Users/limke_msg9rxa/Downloads/Courses/big-data/IS459_Crypto_BigData_Pipeline/src/jobs/stream_to_silver.py) for Phase 4 first
+- [ ] Operationalize and validate [stream_to_silver.py](/c:/Users/limke_msg9rxa/Downloads/Courses/big-data/IS459_Crypto_BigData_Pipeline/src/jobs/stream_to_silver.py) end-to-end on EC2
 
 If you want, I can also rewrite this into a cleaner “agent handoff note” with current status, known pitfalls, and exact next steps.

@@ -60,7 +60,7 @@
           "format": 1,
           "pluginVersion": "11.1.0",
           "queryType": "table",
-          "rawSql": "SELECT symbol, max(open_time) AS latest_open_time, dateDiff('second', max(open_time), now()) AS freshness_seconds, anyLast(source) AS latest_source, countIf(open_time >= now() - INTERVAL 24 HOUR) AS rows_last_24h FROM crypto.raw_ohlcv_1m GROUP BY symbol ORDER BY symbol",
+          "rawSql": "SELECT symbol, max(open_time) AS latest_open_time, dateDiff('second', max(open_time), now()) AS freshness_seconds, anyLast(source) AS latest_source, countIf(open_time >= now() - INTERVAL 24 HOUR) AS rows_last_24h FROM raw_ohlcv_1m GROUP BY symbol ORDER BY symbol",
           "refId": "A"
         }
       ],
@@ -107,7 +107,7 @@
           "format": 1,
           "pluginVersion": "11.1.0",
           "queryType": "table",
-          "rawSql": "SELECT toStartOfMinute(open_time) AS minute_bucket, symbol, count() AS row_count FROM crypto.raw_ohlcv_1m WHERE open_time >= now() - INTERVAL 60 MINUTE GROUP BY minute_bucket, symbol ORDER BY minute_bucket DESC, symbol LIMIT 180",
+          "rawSql": "SELECT toStartOfMinute(open_time) AS minute_bucket, symbol, count() AS row_count FROM raw_ohlcv_1m WHERE open_time >= now() - INTERVAL 60 MINUTE GROUP BY minute_bucket, symbol ORDER BY minute_bucket DESC, symbol LIMIT 180",
           "refId": "A"
         }
       ],
@@ -154,7 +154,7 @@
           "format": 1,
           "pluginVersion": "11.1.0",
           "queryType": "table",
-          "rawSql": "SELECT metric_time, component, metric_name, ifNull(symbol, '') AS symbol, metric_value, unit, ifNull(job_name, '') AS job_name, ifNull(run_id, '') AS run_id FROM crypto.pipeline_metrics WHERE metric_time >= now() - INTERVAL 24 HOUR ORDER BY metric_time DESC LIMIT 100",
+          "rawSql": "SELECT metric_time, component, metric_name, ifNull(symbol, '') AS symbol, metric_value, unit, ifNull(job_name, '') AS job_name, ifNull(run_id, '') AS run_id FROM pipeline_metrics WHERE metric_time >= now() - INTERVAL 24 HOUR ORDER BY metric_time DESC LIMIT 100",
           "refId": "A"
         }
       ],
@@ -201,7 +201,7 @@
           "format": 1,
           "pluginVersion": "11.1.0",
           "queryType": "table",
-          "rawSql": "SELECT 'agg_ohlcv_1h' AS table_name, symbol, max(bucket_start) AS latest_bucket_start, count() AS total_rows FROM crypto.agg_ohlcv_1h GROUP BY table_name, symbol UNION ALL SELECT 'agg_ohlcv_1d' AS table_name, symbol, max(bucket_start) AS latest_bucket_start, count() AS total_rows FROM crypto.agg_ohlcv_1d GROUP BY table_name, symbol ORDER BY table_name, symbol",
+          "rawSql": "SELECT 'agg_ohlcv_1h' AS table_name, symbol, max(bucket_start) AS latest_bucket_start, count() AS total_rows FROM agg_ohlcv_1h GROUP BY table_name, symbol UNION ALL SELECT 'agg_ohlcv_1d' AS table_name, symbol, max(bucket_start) AS latest_bucket_start, count() AS total_rows FROM agg_ohlcv_1d GROUP BY table_name, symbol ORDER BY table_name, symbol",
           "refId": "A"
         }
       ],
@@ -248,7 +248,7 @@
           "format": 1,
           "pluginVersion": "11.1.0",
           "queryType": "table",
-          "rawSql": "SELECT metric_time, metric_name, ifNull(symbol, '') AS symbol, metric_value, unit, ifNull(details, '') AS details FROM crypto.pipeline_metrics WHERE metric_time >= now() - INTERVAL 24 HOUR AND job_name = 'stream_to_silver' ORDER BY metric_time DESC LIMIT 100",
+          "rawSql": "SELECT metric_time, metric_name, ifNull(symbol, '') AS symbol, metric_value, unit, ifNull(details, '') AS details FROM pipeline_metrics WHERE metric_time >= now() - INTERVAL 24 HOUR AND job_name = 'stream_to_silver' ORDER BY metric_time DESC LIMIT 100",
           "refId": "A"
         }
       ],
