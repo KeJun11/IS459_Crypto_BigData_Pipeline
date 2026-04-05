@@ -30,7 +30,7 @@ spark = (
 )
 
 BINANCE2_BASE = f"s3://{BUCKET}/bronze/binance2"
-DAILY_OUT = f"s3://{BUCKET}/cleaned/bq2_daily_prices"
+DAILY_OUT = f"s3://{BUCKET}/cleaned/bq2_daily_prices_initial_full_load/"
 TODAY_PATH = f"{BINANCE2_BASE}/{TODAY}"
 
 print(f"Spark             : {spark.version}")
