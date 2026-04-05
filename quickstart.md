@@ -202,11 +202,12 @@ The analytics dashboard should give you:
 
 - a symbol dropdown
 - a timeframe dropdown for `1m` and `5m`
+- a candlestick view when the Grafana panel renders correctly
 - price and trend overlays
 - session VWAP
 - bucketed volume
 - return and rolling volatility
-- a recent OHLC fallback table
+- a recent OHLC fallback table if you prefer the tabular view
 
 Set the time range to `Last 24 hours` if the dashboard looks empty.
 

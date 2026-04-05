@@ -700,6 +700,76 @@
       ],
       "title": "Return And Rolling Volatility",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "mode": "candles",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "pluginVersion": "11.1.0",
+          "queryType": "table",
+          "rawSql": "WITH aggregated AS ( SELECT if('${timeframe}' = '5m', toStartOfInterval(open_time, INTERVAL 5 MINUTE), open_time) AS time, argMin(open, open_time) AS open, max(high) AS high, min(low) AS low, argMax(close, open_time) AS close, sum(volume) AS volume FROM raw_ohlcv_1m WHERE symbol = '${symbol}' AND open_time >= now() - INTERVAL 24 HOUR GROUP BY time ) SELECT time, open, high, low, close, volume FROM aggregated ORDER BY time",
+          "refId": "A"
+        }
+      ],
+      "title": "Candlestick View",
+      "type": "candlestick"
     }
   ],
   "refresh": "30s",
@@ -774,6 +844,6 @@
   "timezone": "browser",
   "title": "Streaming Market Analytics",
   "uid": "streaming-market-analytics",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

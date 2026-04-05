@@ -330,7 +330,7 @@ python -m src.ingestion.stream_producer --max-records 15 --log-level INFO
 ```
 
 - Watch the `Pipeline Shakedown Overview` dashboard for advancing raw timestamps, per-minute row counts, and new pipeline metrics.
-- Use `Streaming Market Analytics` when you want symbol/timeframe controls, trend overlays, VWAP, volatility, volume, and a recent OHLC view on the same shared ClickHouse datasource.
+- Use `Streaming Market Analytics` when you want symbol/timeframe controls, a candlestick view, trend overlays, VWAP, volatility, volume, and a recent OHLC fallback view on the same shared ClickHouse datasource.
 - If Grafana looks stale, use these ClickHouse checks:
 
 ```powershell
