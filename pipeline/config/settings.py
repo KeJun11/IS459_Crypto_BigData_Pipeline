@@ -20,6 +20,9 @@ AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 S3_BUCKET_RAW = os.getenv("S3_BUCKET_RAW")
 S3_RAW_PREFIX = "raw/"
 
+S3_BUCKET_STREAM = os.getenv("S3_BUCKET_STREAM")
+S3_STREAM_PREFIX = os.getenv("S3_STREAM_PREFIX", "bronze/stream/")
+
 
 GLUE_DATABASE = os.getenv("GLUE_DATABASE")
 
@@ -59,7 +62,7 @@ BACKFILL_START_DATE = "2025-09-21"
 # ──────────────────────────────────────────────
 # Kinesis / Streaming
 # ──────────────────────────────────────────────
-KINESIS_STREAM_NAME = os.getenv("KINESIS_STREAM_NAME", "crypto-stream")
+KINESIS_STREAM_NAME = os.getenv("KINESIS_STREAM_NAME", "crypto-ohlcv-1m")
 
 # Symbols to stream via WebSocket (keep small — 3 core pairs)
 STREAM_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]

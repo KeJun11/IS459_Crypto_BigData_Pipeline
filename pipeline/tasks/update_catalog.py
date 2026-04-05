@@ -105,5 +105,71 @@ def update_catalog() -> None:
     _create_or_update_table(glue)
 
     log.info("═══ Task 3: update_catalog  DONE  ═══") 
+# ── Stream table (cold path — Firehose → bronze/stream/) ─────────────────────
+
+STREAM_TABLE = {
+    "name": "stream_binance_klines",
+    "description": "Real-time Binance 1-minute klines via Kinesis Firehose (NDJSON)",
+    "columns": [
+        {"Name": "symbol",                     "Type": "string",  "Comment": "Trading pair e.g. BTCUSDT"},
+        {"Name": "source",                     "Type": "string",  "Comment": "Always binance"},
+        {"Name": "open_time",                  "Type": "bigint",  "Comment": "Kline open time (ms UTC)"},
+        {"Name": "close_time",                 "Type": "bigint",  "Comment": "Kline close time (ms UTC)"},
+        {"Name": "open",                       "Type": "string",  "Comment": "Open price"},
+        {"Name": "high",                       "Type": "string",  "Comment": "Highest price"},
+        {"Name": "low",                        "Type": "string",  "Comment": "Lowest price"},
+        {"Name": "close",                      "Type": "string",  "Comment": "Close price"},
+        {"Name": "volume",                     "Type": "string",  "Comment": "Base asset volume"},
+        {"Name": "quote_asset_volume",         "Type": "string",  "Comment": "Quote asset volume"},
+        {"Name": "number_of_trades",           "Type": "int",     "Comment": "Number of trades"},
+        {"Name": "taker_buy_base_volume",      "Type": "string",  "Comment": "Taker buy base volume"},
+        {"Name": "taker_buy_quote_volume",     "Type": "string",  "Comment": "Taker buy quote volume"},
+    ],
+}
+
+
+def update_stream_catalog() -> None:
+    """Ensure Glue database + stream kline table exist pointing at bronze/stream/."""
+    log.info("═══ update_stream_catalog  START ═══")
+    glue = get_glue_client()
+
+    _ensure_database(glue)
+
+    s3_location = f"s3://{settings.S3_BUCKET_STREAM}/{settings.S3_STREAM_PREFIX}"
+    table_input = {
+        "Name": STREAM_TABLE["name"],
+        "Description": STREAM_TABLE["description"],
+        "StorageDescriptor": {
+            "Columns": STREAM_TABLE["columns"],
+            "Location": s3_location,
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "SerdeInfo": {
+                "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+                "Parameters": {
+                    "paths": ",".join(c["Name"] for c in STREAM_TABLE["columns"]),
+                },
+            },
+        },
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "classification": "json",
+            "has_encrypted_data": "false",
+        },
+    }
+
+    try:
+        glue.get_table(DatabaseName=settings.GLUE_DATABASE, Name=STREAM_TABLE["name"])
+        log.info("Updating table  ➜  %s", STREAM_TABLE["name"])
+        glue.update_table(DatabaseName=settings.GLUE_DATABASE, TableInput=table_input)
+    except glue.exceptions.EntityNotFoundException:
+        log.info("Creating table  ➜  %s", STREAM_TABLE["name"])
+        glue.create_table(DatabaseName=settings.GLUE_DATABASE, TableInput=table_input)
+
+    log.info("═══ update_stream_catalog  DONE  ═══")
+
+CATALOGUE_TASKS = [update_catalog, update_stream_catalog]
+
 if __name__ == "__main__":
-    update_catalog()
+    for task in CATALOGUE_TASKS:
+        task()

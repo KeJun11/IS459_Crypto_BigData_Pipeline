@@ -15,8 +15,8 @@ t2: Ensures the Glue Data Catalog tables exist for the S3 raw data.
     This is idempotent — safe to run every slot.
 
 AWS prerequisites (must exist before running this DAG):
-  - Kinesis Data Stream named "crypto-stream"
-  - Kinesis Firehose delivery stream pointing at crypto-stream → S3
+  - Kinesis Data Stream named "crypto-ohlcv-1m"
+  - Kinesis Firehose delivery stream pointing at crypto-ohlcv-1m → S3
   - S3 bucket matching S3_BUCKET_RAW
   - IAM permissions: kinesis:PutRecord, glue:*, s3:PutObject
 """
@@ -28,7 +28,7 @@ from airflow.operators.python import PythonOperator
 
 from pipeline.config import settings
 from pipeline.tasks.consume_websocket import consume_websocket
-from pipeline.tasks.update_catalog import update_catalog
+from pipeline.tasks.update_catalog import update_stream_catalog
 
 default_args = {
     "owner": "bda-team",
@@ -57,7 +57,7 @@ with DAG(
 
     t2_catalog = PythonOperator(
         task_id="update_catalog",
-        python_callable=update_catalog,
+        python_callable=update_stream_catalog,
     )
 
     t1_consume >> t2_catalog

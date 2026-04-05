@@ -1,0 +1,67 @@
+version: '3.8'
+
+# ── Shared config for all Airflow services ────────────────────────────────────
+x-airflow-common: &airflow-common
+  build: .
+  image: crypto-pipeline-airflow
+  env_file: .env                        # loads AWS_ACCESS_KEY_ID, S3_BUCKET_RAW, etc.
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/pipeline/dags
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__API__AUTH_BACKENDS: >-
+      airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
+    PYTHONPATH: /opt/airflow            # makes `from pipeline.xxx import yyy` work
+  volumes:
+    - ./pipeline:/opt/airflow/pipeline  # live-mount — no rebuild needed on code changes
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+# ── Services ──────────────────────────────────────────────────────────────────
+services:
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+
+  # One-shot init: migrate DB + create admin user
+  airflow-init:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com"
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8085:8080"
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres-db:
+  airflow-logs:
