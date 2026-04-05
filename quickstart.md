@@ -14,8 +14,8 @@ Use this when you want to bring the streaming pipeline up quickly and verify tha
 - The producer can run from your laptop.
 - Firehose archives the raw stream to S3 Bronze automatically.
 - The Spark consumer writes:
-  - cleaned rows to ClickHouse `crypto.raw_ohlcv_1m`
-  - streaming metrics to ClickHouse `crypto.pipeline_metrics`
+  - cleaned rows to ClickHouse `raw_ohlcv_1m`
+  - streaming metrics to ClickHouse `pipeline_metrics`
   - cleaned parquet to `s3://is459-crypto-datalake/silver/stream/`
 
 ## Important Constraint
@@ -47,9 +47,11 @@ These should exist in the EC2 `.env`:
 ```env
 AWS_DEFAULT_REGION=us-east-1
 KINESIS_STREAM_NAME=crypto-ohlcv-1m
+SHARED_CLICKHOUSE_HOST=<shared-clickhouse-host>
+SHARED_CLICKHOUSE_PORT=8123
+SHARED_CLICKHOUSE_DATABASE=is459_streaming_kj
 STREAM_CHECKPOINT_ROOT=s3a://is459-crypto-datalake/checkpoints/stream_to_silver
 STREAM_SILVER_OUTPUT=s3a://is459-crypto-datalake/silver/stream
-STREAM_CLICKHOUSE_URL=http://clickhouse:8123
 STREAM_TRIGGER_PROCESSING_TIME=30 seconds
 STREAM_INITIAL_POSITION=latest
 STREAM_KINESIS_FORMAT=aws-kinesis
@@ -61,7 +63,8 @@ STREAM_SPARK_CONTAINER=crypto-spark-master
 
 Notes:
 
-- `STREAM_CLICKHOUSE_URL=http://clickhouse:8123` is correct on EC2 because the Spark container reaches ClickHouse over the Docker network.
+- `SHARED_CLICKHOUSE_HOST` is the main source of truth after the shared ClickHouse cutover.
+- `STREAM_CLICKHOUSE_URL` is now optional and only needed if you want to override the shared-host derived URL explicitly.
 - If you make a breaking change to the streaming query, use a new checkpoint root instead of reusing the old one.
 
 ## Step 1: Start the EC2 Stack
@@ -183,14 +186,27 @@ Use:
 - username: `admin`
 - password: `admin`
 
-Open the `Pipeline Shakedown Overview` dashboard.
+Open both dashboards:
 
-The panels that should reflect the stream are:
+- `Pipeline Shakedown Overview` for health checks
+- `Streaming Market Analytics` for the finance-style symbol/timeframe view
+
+The health dashboard panels that should reflect the stream are:
 
 - `Latest Raw Candle By Symbol`
 - `Raw Rows Per Minute (Last 60m)`
 - `Recent Pipeline Metrics`
 - `Recent Stream Metrics`
+
+The analytics dashboard should give you:
+
+- a symbol dropdown
+- a timeframe dropdown for `1m` and `5m`
+- price and trend overlays
+- session VWAP
+- bucketed volume
+- return and rolling volatility
+- a recent OHLC fallback table
 
 Set the time range to `Last 24 hours` if the dashboard looks empty.
 

@@ -286,7 +286,9 @@ Stage 0: Bronze seed conversion
 Stage 1: Local shakedown
 - Start the local stack with `docker compose up -d`.
 - Restart Grafana after pulling new repo changes so the provisioned dashboard is loaded.
-- Open Grafana at `http://localhost:3000` and use the `Pipeline Shakedown Overview` dashboard.
+- Open Grafana at `http://localhost:3000` and use:
+  - `Pipeline Shakedown Overview` for health checks
+  - `Streaming Market Analytics` for the finance-style symbol/timeframe view
 - Run the local conversion job or the local smoke test above.
 - Run the local Spark batch jobs against the converted Bronze parquet:
 
@@ -328,6 +330,7 @@ python -m src.ingestion.stream_producer --max-records 15 --log-level INFO
 ```
 
 - Watch the `Pipeline Shakedown Overview` dashboard for advancing raw timestamps, per-minute row counts, and new pipeline metrics.
+- Use `Streaming Market Analytics` when you want symbol/timeframe controls, trend overlays, VWAP, volatility, volume, and a recent OHLC view on the same shared ClickHouse datasource.
 - If Grafana looks stale, use these ClickHouse checks:
 
 ```powershell
