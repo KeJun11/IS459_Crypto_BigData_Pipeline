@@ -29,11 +29,23 @@ x-airflow-common:
     AIRFLOW_CLICKHOUSE_DATABASE: ${AIRFLOW_CLICKHOUSE_DATABASE:-crypto}
     AIRFLOW_TRACKED_SYMBOLS: ${AIRFLOW_TRACKED_SYMBOLS:-BTCUSDT,ETHUSDT,SOLUSDT}
     AIRFLOW_BATCH_SKIP_CLICKHOUSE: ${AIRFLOW_BATCH_SKIP_CLICKHOUSE:-false}
-    _PIP_ADDITIONAL_REQUIREMENTS: apache-airflow-providers-amazon boto3
+    KINESIS_STREAM_NAME: ${KINESIS_STREAM_NAME:-crypto-ohlcv-1m}
+    STREAM_SPARK_CONTAINER: ${STREAM_SPARK_CONTAINER:-crypto-spark-master}
+    STREAM_SPARK_MASTER: ${STREAM_SPARK_MASTER:-spark://spark-master:7077}
+    STREAM_SPARK_PACKAGES: ${STREAM_SPARK_PACKAGES:-}
+    STREAM_EXTRA_JARS: ${STREAM_EXTRA_JARS:-}
+    STREAM_MAX_RUNTIME_SECONDS: ${STREAM_MAX_RUNTIME_SECONDS:-3600}
+    STREAM_AWAIT_TERMINATION_SECONDS: ${STREAM_AWAIT_TERMINATION_SECONDS:-3600}
+    AIRFLOW_PROJECT_ROOT: /opt/airflow/project
+    _PIP_ADDITIONAL_REQUIREMENTS: apache-airflow-providers-amazon boto3 websockets python-dotenv
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - airflow_logs:/opt/airflow/logs
     - ./airflow/plugins:/opt/airflow/plugins
+    - ./src:/opt/airflow/project/src
+    - ./scripts:/opt/airflow/project/scripts
+    - ./schemas:/opt/airflow/project/schemas
+    - /var/run/docker.sock:/var/run/docker.sock
   depends_on:
     airflow-postgres:
       condition: service_healthy
@@ -63,7 +75,7 @@ services:
     container_name: crypto-spark-master
     ports:
       - "7077:7077"
-      - "8080:8080"
+      - "8085:8080"
     environment:
       SPARK_MODE: master
       SPARK_RPC_AUTHENTICATION_ENABLED: "no"
