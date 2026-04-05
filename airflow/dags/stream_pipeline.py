@@ -17,6 +17,8 @@ from _common import (
 
 # ── Stream-specific settings ──────────────────────────────────────────────────
 _KINESIS_STREAM_NAME = get_setting("KINESIS_STREAM_NAME", "crypto-ohlcv-1m")
+_GLUE_DATABASE = get_setting("GLUE_DATABASE", "crypto_pipeline_db")
+_STREAM_SILVER_OUTPUT = get_setting("STREAM_SILVER_OUTPUT", "s3a://is459-crypto-datalake/silver/stream")
 _STREAM_SPARK_CONTAINER = get_setting("STREAM_SPARK_CONTAINER", "crypto-spark-master")
 _STREAM_SPARK_MASTER = get_setting("STREAM_SPARK_MASTER", "spark://spark-master:7077")
 _STREAM_SPARK_PACKAGES = get_setting("STREAM_SPARK_PACKAGES", "")
@@ -64,6 +66,7 @@ with DAG(
     start_date=datetime(2026, 4, 5),
     schedule="@hourly",
     catchup=False,
+    max_active_runs=1,
     tags=["crypto", "phase7", "stream", "kinesis"],
 ) as dag:
 
@@ -102,8 +105,70 @@ with DAG(
             "consumer_termination_seconds": _STREAM_AWAIT_TERMINATION_SECONDS,
         }
 
+    @task(task_id="update_glue_catalog")
+    def update_glue_catalog() -> None:
+        import boto3
+
+        # Glue requires s3:// — strip s3a:// if present
+        s3_location = _STREAM_SILVER_OUTPUT.replace("s3a://", "s3://").rstrip("/")
+
+        silver_table = {
+            "Name": "silver_stream_ohlcv_1m",
+            "Description": "Cleaned 1-minute OHLCV stream data written by Spark Structured Streaming (Parquet)",
+            "StorageDescriptor": {
+                "Columns": [
+                    {"Name": "symbol",                      "Type": "string"},
+                    {"Name": "open",                        "Type": "double"},
+                    {"Name": "high",                        "Type": "double"},
+                    {"Name": "low",                         "Type": "double"},
+                    {"Name": "close",                       "Type": "double"},
+                    {"Name": "volume",                      "Type": "double"},
+                    {"Name": "open_time",                   "Type": "bigint"},
+                    {"Name": "close_time",                  "Type": "bigint"},
+                    {"Name": "is_closed",                   "Type": "boolean"},
+                    {"Name": "source",                      "Type": "string"},
+                    {"Name": "processed_at",                "Type": "timestamp"},
+                    {"Name": "open_time_ts",                "Type": "timestamp"},
+                    {"Name": "event_time_ts",               "Type": "timestamp"},
+                    {"Name": "kinesis_arrival_timestamp",   "Type": "timestamp"},
+                ],
+                "Location": s3_location,
+                "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+                "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+                "SerdeInfo": {
+                    "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+                },
+            },
+            "PartitionKeys": [
+                {"Name": "symbol", "Type": "string"},
+                {"Name": "year",   "Type": "int"},
+                {"Name": "month",  "Type": "int"},
+            ],
+            "TableType": "EXTERNAL_TABLE",
+            "Parameters": {"classification": "parquet"},
+        }
+
+        glue = boto3.client("glue", region_name=AWS_REGION)
+
+        try:
+            glue.get_database(Name=_GLUE_DATABASE)
+        except glue.exceptions.EntityNotFoundException:
+            glue.create_database(
+                DatabaseInput={
+                    "Name": _GLUE_DATABASE,
+                    "Description": "Crypto data lake – Binance klines",
+                }
+            )
+
+        try:
+            glue.get_table(DatabaseName=_GLUE_DATABASE, Name=silver_table["Name"])
+            glue.update_table(DatabaseName=_GLUE_DATABASE, TableInput=silver_table)
+        except glue.exceptions.EntityNotFoundException:
+            glue.create_table(DatabaseName=_GLUE_DATABASE, TableInput=silver_table)
+
     settings_check = validate_runtime_settings()
+    catalog_update = update_glue_catalog()
     summary = summarize_stream_run()
 
     settings_check >> [stream_producer, stream_to_silver]
-    [stream_producer, stream_to_silver] >> summary
+    [stream_producer, stream_to_silver] >> catalog_update >> summary

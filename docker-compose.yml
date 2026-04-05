@@ -96,11 +96,12 @@ services:
       STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
       STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
       STREAM_KINESIS_ENDPOINT_URL: ${STREAM_KINESIS_ENDPOINT_URL:-}
+      STREAM_KINESIS_FORMAT: ${STREAM_KINESIS_FORMAT:-kinesis}
     volumes:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas
       - ./infra/docker/spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
-    mem_limit: 2g
+    mem_limit: 3g
 
   spark-worker:
     image: bitnamilegacy/spark:3.5.1
@@ -130,6 +131,7 @@ services:
       STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
       STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
       STREAM_KINESIS_ENDPOINT_URL: ${STREAM_KINESIS_ENDPOINT_URL:-}
+      STREAM_KINESIS_FORMAT: ${STREAM_KINESIS_FORMAT:-kinesis}
     volumes:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas

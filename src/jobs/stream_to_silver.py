@@ -67,7 +67,7 @@ DEFAULT_CLICKHOUSE_DATABASE = "crypto"
 DEFAULT_CLICKHOUSE_TABLE = "raw_ohlcv_1m"
 DEFAULT_METRICS_TABLE = "pipeline_metrics"
 DEFAULT_JOB_NAME = "stream_to_silver"
-DEFAULT_KINESIS_FORMAT = "aws-kinesis"
+DEFAULT_KINESIS_FORMAT = "kinesis"
 
 
 def env_or_default(name: str, default: str) -> str:
@@ -461,6 +461,8 @@ def main() -> None:
                     "streamName": args.stream_name,
                     "region": args.region,
                     "initialPosition": args.initial_position,
+                    "awsAccessKeyId": os.getenv("AWS_ACCESS_KEY_ID", ""),
+                    "awsSecretKey": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
                 }
             )
         )
