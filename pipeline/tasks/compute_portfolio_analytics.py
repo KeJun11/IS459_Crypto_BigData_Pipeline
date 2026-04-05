@@ -132,12 +132,12 @@ def _max_market_date_query(table_ref: str) -> str:
     return f"SELECT toString(max(date)) FROM {table_ref}"
 
 
-def _available_symbols_query(table_ref: str) -> str:
+def _fresh_symbols_query(table_ref: str) -> str:
     return f"""
-    SELECT symbol
+    SELECT symbol, toString(max(date)) AS last_date
     FROM {table_ref}
     GROUP BY symbol
-    ORDER BY symbol
+    HAVING max(date) = (SELECT max(date) FROM {table_ref})
     FORMAT JSONEachRow
     """
 
@@ -631,23 +631,23 @@ def compute_portfolio_analytics() -> dict[str, int]:
         label="create simulations table",
     )
 
-    available_symbols = [
+    fresh_symbols = {
         str(row["symbol"])
         for row in _execute_json_each_row(
-            _available_symbols_query(raw_table_ref),
-            label="fetch available symbols",
+            _fresh_symbols_query(raw_table_ref),
+            label="fetch fresh symbols",
         )
-    ]
+    }
     analysis_symbols = [
-        symbol for symbol in portfolio_settings.ASSET_UNIVERSE if symbol in available_symbols
+        symbol for symbol in portfolio_settings.ASSET_UNIVERSE if symbol in fresh_symbols
     ]
-    missing_symbols = [
-        symbol for symbol in portfolio_settings.ASSET_UNIVERSE if symbol not in available_symbols
+    skipped_symbols = [
+        symbol for symbol in portfolio_settings.ASSET_UNIVERSE if symbol not in fresh_symbols
     ]
-    if missing_symbols:
+    if skipped_symbols:
         log.info(
-            "Skipping configured symbols that are not present in ClickHouse: %s",
-            ", ".join(missing_symbols),
+            "Skipping configured symbols that are not present or stale in ClickHouse: %s",
+            ", ".join(skipped_symbols),
         )
     if portfolio_settings.PORTFOLIO_BENCHMARK_SYMBOL not in analysis_symbols:
         raise RuntimeError(

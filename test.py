@@ -3,7 +3,9 @@ import pyarrow.parquet as pq
 from pyarrow import fs
 
 BUCKET = "is459-crypto-raw-data"
-PREFIX = "cleaned/bq2_daily_prices_initial_full_load/date=2017-09-06/"
+PREFIX = "bronze/binance2/2026-04-04/"
+# PREFIX = "cleaned/bq2_daily_prices_initial_full_load/date=2026-04-04/"
+
 REGION = "us-east-1"
 
 s3 = boto3.client("s3", region_name=REGION)

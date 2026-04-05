@@ -2,15 +2,27 @@
 daily_ingest.py
 """
 
-from datetime import date, timedelta
+import sys
+from datetime import datetime, timezone, timedelta
 
+import boto3
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import DoubleType
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 BUCKET = "is459-crypto-raw-data"
-TODAY = str(date.today() - timedelta(days=1))
+YESTERDAY = sys.argv[1] if len(sys.argv) > 1 else str(datetime.now(timezone.utc).date() - timedelta(days=1))
+
+# ── Guard: skip if output partition already exists ────────────────────────────
+_out_prefix = f"cleaned/bq2_daily_prices_initial_full_load/date={YESTERDAY}/"
+_s3 = boto3.client("s3")
+_existing = _s3.list_objects_v2(Bucket=BUCKET, Prefix=_out_prefix, MaxKeys=1)
+if _existing.get("KeyCount", 0) > 0:
+    print(
+        f"SKIPPED: output partition s3://{BUCKET}/{_out_prefix} already exists. Exiting to prevent duplicates."
+    )
+    sys.exit(0)
 
 # ── SparkSession ──────────────────────────────────────────────────────────────
 spark = (
@@ -26,20 +38,21 @@ spark = (
     .config("spark.sql.adaptive.advisoryPartitionSizeInBytes", "134217728")
     .config("spark.sql.files.maxPartitionBytes", "134217728")
     .config("spark.sql.broadcastTimeout", "600")
+    .config("spark.sql.session.timeZone", "UTC")
     .getOrCreate()
 )
 
 BINANCE2_BASE = f"s3://{BUCKET}/bronze/binance2"
 DAILY_OUT = f"s3://{BUCKET}/cleaned/bq2_daily_prices_initial_full_load"
-TODAY_PATH = f"{BINANCE2_BASE}/{TODAY}"
+YESTERDAY_PATH = f"{BINANCE2_BASE}/{YESTERDAY}"
 
 print(f"Spark             : {spark.version}")
 print(f"Bucket (raw)      : {BUCKET}")
-print(f"Ingesting date    : {TODAY}")
-print(f"Reading from      : {TODAY_PATH}")
+print(f"Ingesting date    : {YESTERDAY}")
+print(f"Reading from      : {YESTERDAY_PATH}")
 print("SparkSession ready")
 
-# ── § 1  Read today's partition directly ──────────────────────────────────────
+# ── § 1  Read yesterday's partition ───────────────────────────────────────────
 ORDERED_COLS = [
     "timestamp",
     "symbol",
@@ -56,7 +69,7 @@ ORDERED_COLS = [
 ]
 
 binance_raw = (
-    spark.read.parquet(TODAY_PATH)
+    spark.read.parquet(YESTERDAY_PATH)
     .select(
         F.col("timestamp"),
         F.col("symbol"),
@@ -74,18 +87,18 @@ binance_raw = (
     .select(ORDERED_COLS)
 )
 
-today_df = binance_raw
-print(f"Filtered to date = {TODAY}")
+yesterday_df = binance_raw
+print(f"Ingesting date = {YESTERDAY}")
 
 # ── § 3  Clean ────────────────────────────────────────────────────────────────
-today_df = (
-    today_df.withColumn("symbol", F.trim(F.col("symbol")))
+yesterday_df = (
+    yesterday_df.withColumn("symbol", F.trim(F.col("symbol")))
     .dropna()
     .dropDuplicates(["timestamp", "symbol"])
 )
 
 # ── § 4  Data Quality Filters ─────────────────────────────────────────────────
-today_df = today_df.filter(
+yesterday_df = yesterday_df.filter(
     (F.col("open") > 0)
     & (F.col("high") > 0)
     & (F.col("low") > 0)
@@ -100,12 +113,12 @@ today_df = today_df.filter(
 
 # ── § 5  Write ────────────────────────────────────────────────────────────────
 (
-    today_df.withColumn("date", F.to_date("timestamp"))
+    yesterday_df.withColumn("date", F.to_date("timestamp"))
     .write.mode("append")
     .partitionBy("date")
     .parquet(DAILY_OUT)
 )
 
-print(f"Written to {DAILY_OUT}/date={TODAY}")
+print(f"Written to {DAILY_OUT}/date={YESTERDAY}")
 
 spark.stop()

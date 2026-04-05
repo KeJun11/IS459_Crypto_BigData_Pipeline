@@ -3,13 +3,11 @@ Task 4 – run_spark_job
 =======================
 Submits a PySpark step to the existing EMR cluster and polls until it
 completes (or fails).
-
-The PySpark script (spark/transform.py) should be uploaded to S3
-at settings.SPARK_SCRIPT_S3_PATH before running this task.
 """
 
 import time
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import boto3
 import pyarrow.parquet as pq
@@ -24,33 +22,33 @@ log = get_logger("task4.run_spark_job")
 POLL_INTERVAL_SEC = 30
 MAX_POLLS = 120  # ~60 min ceiling
 
-
 _DAILY_OUT_BUCKET = "is459-crypto-raw-data"
+_DAILY_IN_PREFIX = "bronze/binance2"
 _DAILY_OUT_PREFIX = "cleaned/bq2_daily_prices_initial_full_load"
+_SPARK_SCRIPT_S3 = f"s3://{_DAILY_OUT_BUCKET}/scripts/daily_ingest.py"
+_SPARK_SCRIPT_LOCAL = Path(__file__).parents[1] / "spark" / "daily_ingest.py"
 
 
-def _log_rows_ingested() -> None:
-    yesterday = str(date.today() - timedelta(days=1))
+def _list_partition_files(yesterday: str) -> list[str]:
+    """Return S3 keys of parquet files in the output partition for yesterday."""
     partition_prefix = f"{_DAILY_OUT_PREFIX}/date={yesterday}/"
     s3 = boto3.client("s3", region_name=settings.AWS_REGION)
+    paginator = s3.get_paginator("list_objects_v2")
+    return [
+        obj["Key"]
+        for page in paginator.paginate(
+            Bucket=_DAILY_OUT_BUCKET, Prefix=partition_prefix
+        )
+        for obj in page.get("Contents", [])
+        if obj["Key"].endswith(".parquet")
+    ]
+
+
+def _log_partition_stats(yesterday: str, parquet_keys: list[str], label: str) -> None:
+    """Log row/coin counts for a list of parquet keys."""
+    partition_prefix = f"{_DAILY_OUT_PREFIX}/date={yesterday}/"
     s3_fs = fs.S3FileSystem(region=settings.AWS_REGION)
     try:
-        paginator = s3.get_paginator("list_objects_v2")
-        parquet_keys = [
-            obj["Key"]
-            for page in paginator.paginate(
-                Bucket=_DAILY_OUT_BUCKET, Prefix=partition_prefix
-            )
-            for obj in page.get("Contents", [])
-            if obj["Key"].endswith(".parquet")
-        ]
-        if not parquet_keys:
-            log.warning(
-                "No parquet files found at s3://%s/%s",
-                _DAILY_OUT_BUCKET,
-                partition_prefix,
-            )
-            return
         total_rows = sum(
             pq.read_metadata(f"{_DAILY_OUT_BUCKET}/{key}", filesystem=s3_fs).num_rows
             for key in parquet_keys
@@ -64,7 +62,8 @@ def _log_rows_ingested() -> None:
             )
             symbols.update(table.column("symbol").to_pylist())
         log.info(
-            "Rows ingested into s3://%s/%s  ➜  %d rows, %d coins (%d file(s))",
+            "%s s3://%s/%s  ➜  %d rows, %d coins (%d file(s))",
+            label,
             _DAILY_OUT_BUCKET,
             partition_prefix,
             total_rows,
@@ -72,21 +71,53 @@ def _log_rows_ingested() -> None:
             len(parquet_keys),
         )
     except Exception as exc:  # noqa: BLE001
-        log.warning("Could not count ingested rows: %s", exc)
+        log.warning("Could not read partition stats: %s", exc)
 
 
-def run_spark_job() -> str:
+def run_spark_job(target_date: str | None = None) -> str:
     """
     Add a Spark step to the EMR cluster, wait for completion.
+
+    Parameters
+    ----------
+    target_date : str | None
+        ISO date string (e.g. '2026-03-27') to process. Defaults to yesterday.
 
     Returns
     -------
     str
-        Final step state – 'COMPLETED', 'FAILED', etc.
+        Final step state – 'COMPLETED', 'SKIPPED', 'FAILED', etc.
     """
+    yesterday = target_date or str(
+        datetime.now(timezone.utc).date() - timedelta(days=1)
+    )
     log.info("═══ Task 4: run_spark_job  START ═══")
-    emr = get_emr_client()
 
+    # ── Pre-check: does the output partition already exist? ───────────────────
+    existing_keys = _list_partition_files(yesterday)
+    if existing_keys:
+        log.warning(
+            "Output partition already exists — skipping EMR step to avoid duplicates."
+        )
+        _log_partition_stats(yesterday, existing_keys, "Existing data:")
+        log.info("═══ Task 4: run_spark_job  SKIPPED ═══")
+        return "SKIPPED"
+
+    log.info(
+        "Output partition s3://%s/%s/date=%s/ is empty — proceeding.",
+        _DAILY_OUT_BUCKET,
+        _DAILY_OUT_PREFIX,
+        yesterday,
+    )
+
+    # ── Upload latest script to S3 ────────────────────────────────────────────
+    s3 = boto3.client("s3", region_name=settings.AWS_REGION)
+    s3.upload_file(
+        str(_SPARK_SCRIPT_LOCAL), _DAILY_OUT_BUCKET, "scripts/daily_ingest.py"
+    )
+    log.info("Uploaded %s  ➜  %s", _SPARK_SCRIPT_LOCAL.name, _SPARK_SCRIPT_S3)
+
+    emr = get_emr_client()
     cluster_id = get_emr_cluster_id()
 
     step = {
@@ -102,24 +133,28 @@ def run_spark_job() -> str:
                 "yarn",
                 "--conf",
                 "spark.sql.catalogImplementation=hive",
-                settings.SPARK_SCRIPT_S3_PATH,
+                _SPARK_SCRIPT_S3,
+                yesterday,
             ],
         },
     }
 
-    log.info("Submitting step to EMR cluster %s", cluster_id)
-    response = emr.add_job_flow_steps(
-        JobFlowId=cluster_id,
-        Steps=[step],
+    log.info(
+        "Spark input  : s3://%s/%s/%s/", _DAILY_OUT_BUCKET, _DAILY_IN_PREFIX, yesterday
     )
+    log.info(
+        "Spark output : s3://%s/%s/date=%s/",
+        _DAILY_OUT_BUCKET,
+        _DAILY_OUT_PREFIX,
+        yesterday,
+    )
+    log.info("Submitting step to EMR cluster %s", cluster_id)
+    response = emr.add_job_flow_steps(JobFlowId=cluster_id, Steps=[step])
     step_id = response["StepIds"][0]
     log.info("Step submitted  ➜  %s", step_id)
 
     for i in range(MAX_POLLS):
-        desc = emr.describe_step(
-            ClusterId=cluster_id,
-            StepId=step_id,
-        )
+        desc = emr.describe_step(ClusterId=cluster_id, StepId=step_id)
         state = desc["Step"]["Status"]["State"]
         log.info("Poll %d  ➜  step %s  state=%s", i + 1, step_id, state)
 
@@ -140,7 +175,16 @@ def run_spark_job() -> str:
         )
     else:
         log.info("Spark job finished successfully")
-        _log_rows_ingested()
+        result_keys = _list_partition_files(yesterday)
+        if result_keys:
+            _log_partition_stats(yesterday, result_keys, "Written:")
+        else:
+            log.warning(
+                "No parquet files found at s3://%s/%s/date=%s/ after job completed",
+                _DAILY_OUT_BUCKET,
+                _DAILY_OUT_PREFIX,
+                yesterday,
+            )
 
     log.info("═══ Task 4: run_spark_job  DONE  ═══")
     return state
