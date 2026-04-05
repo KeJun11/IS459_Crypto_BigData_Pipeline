@@ -55,11 +55,20 @@ def _log_rows_ingested() -> None:
             pq.read_metadata(f"{_DAILY_OUT_BUCKET}/{key}", filesystem=s3_fs).num_rows
             for key in parquet_keys
         )
+        symbols = set()
+        for key in parquet_keys:
+            table = pq.read_table(
+                f"{_DAILY_OUT_BUCKET}/{key}",
+                columns=["symbol"],
+                filesystem=s3_fs,
+            )
+            symbols.update(table.column("symbol").to_pylist())
         log.info(
-            "Rows ingested into s3://%s/%s  ➜  %d rows (%d file(s))",
+            "Rows ingested into s3://%s/%s  ➜  %d rows, %d coins (%d file(s))",
             _DAILY_OUT_BUCKET,
             partition_prefix,
             total_rows,
+            len(symbols),
             len(parquet_keys),
         )
     except Exception as exc:  # noqa: BLE001
