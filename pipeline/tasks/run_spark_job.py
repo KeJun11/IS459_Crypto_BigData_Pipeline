@@ -26,7 +26,7 @@ MAX_POLLS = 120  # ~60 min ceiling
 
 
 _DAILY_OUT_BUCKET = "is459-crypto-raw-data"
-_DAILY_OUT_PREFIX = "cleaned/bq2_daily_prices_initial_full_load/"
+_DAILY_OUT_PREFIX = "cleaned/bq2_daily_prices_initial_full_load"
 
 
 def _log_rows_ingested() -> None:
