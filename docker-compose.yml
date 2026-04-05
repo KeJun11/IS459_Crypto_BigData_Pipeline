@@ -93,6 +93,7 @@ services:
       STREAM_CHECKPOINT_ROOT: ${STREAM_CHECKPOINT_ROOT:-s3a://is459-crypto-datalake/checkpoints/stream_to_silver}
       STREAM_SILVER_OUTPUT: ${STREAM_SILVER_OUTPUT:-s3a://is459-crypto-datalake/silver/stream}
       STREAM_CLICKHOUSE_URL: ${STREAM_CLICKHOUSE_URL:-http://clickhouse:8123}
+      STREAM_CLICKHOUSE_DATABASE: ${STREAM_CLICKHOUSE_DATABASE:-}
       STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
       STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
       STREAM_KINESIS_ENDPOINT_URL: ${STREAM_KINESIS_ENDPOINT_URL:-}
@@ -113,8 +114,8 @@ services:
     environment:
       SPARK_MODE: worker
       SPARK_MASTER_URL: spark://spark-master:7077
-      SPARK_WORKER_MEMORY: 2G
-      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 4G
+      SPARK_WORKER_CORES: 4
       SPARK_RPC_AUTHENTICATION_ENABLED: "no"
       SPARK_RPC_ENCRYPTION_ENABLED: "no"
       SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: "no"
@@ -128,6 +129,7 @@ services:
       STREAM_CHECKPOINT_ROOT: ${STREAM_CHECKPOINT_ROOT:-s3a://is459-crypto-datalake/checkpoints/stream_to_silver}
       STREAM_SILVER_OUTPUT: ${STREAM_SILVER_OUTPUT:-s3a://is459-crypto-datalake/silver/stream}
       STREAM_CLICKHOUSE_URL: ${STREAM_CLICKHOUSE_URL:-http://clickhouse:8123}
+      STREAM_CLICKHOUSE_DATABASE: ${STREAM_CLICKHOUSE_DATABASE:-}
       STREAM_TRIGGER_PROCESSING_TIME: ${STREAM_TRIGGER_PROCESSING_TIME:-30 seconds}
       STREAM_INITIAL_POSITION: ${STREAM_INITIAL_POSITION:-latest}
       STREAM_KINESIS_ENDPOINT_URL: ${STREAM_KINESIS_ENDPOINT_URL:-}
@@ -136,7 +138,7 @@ services:
       - ./src:/opt/project/src
       - ./schemas:/opt/project/schemas
       - ./infra/docker/spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
-    mem_limit: 2g
+    mem_limit: 5g
 
   grafana:
     image: grafana/grafana:11.1.0
@@ -149,6 +151,10 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+      SHARED_CLICKHOUSE_HOST: ${SHARED_CLICKHOUSE_HOST}
+      SHARED_CLICKHOUSE_PORT: ${SHARED_CLICKHOUSE_PORT:-8123}
+      SHARED_CLICKHOUSE_DATABASE: ${SHARED_CLICKHOUSE_DATABASE}
+      SHARED_CLICKHOUSE_USER: ${SHARED_CLICKHOUSE_USER:-default}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infra/docker/grafana/provisioning:/etc/grafana/provisioning
