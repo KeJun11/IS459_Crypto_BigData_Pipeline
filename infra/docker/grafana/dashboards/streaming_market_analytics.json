@@ -770,6 +770,100 @@
       ],
       "title": "Candlestick View",
       "type": "candlestick"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 10,
+        "x": 0,
+        "y": 42
+      },
+      "id": 11,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "pluginVersion": "11.1.0",
+          "queryType": "table",
+          "rawSql": "SELECT symbol, sum(volume) AS total_volume_24h, count() AS candles_24h, max(open_time) AS latest_open_time FROM raw_ohlcv_1m WHERE open_time >= now() - INTERVAL 24 HOUR GROUP BY symbol ORDER BY total_volume_24h DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Trading Volume Per Coin (24h)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 14,
+        "x": 10,
+        "y": 42
+      },
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "pluginVersion": "11.1.0",
+          "queryType": "table",
+          "rawSql": "WITH price_history AS ( SELECT symbol, open_time, toFloat64(close) AS close_price, max(toFloat64(close)) OVER (PARTITION BY symbol ORDER BY open_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_peak FROM raw_ohlcv_1m WHERE open_time >= now() - INTERVAL 24 HOUR ), returns AS ( SELECT symbol, if(prev_close IS NULL OR prev_close = 0, NULL, (close_price - prev_close) / prev_close) AS return_1m FROM ( SELECT symbol, open_time, toFloat64(close) AS close_price, lagInFrame(toFloat64(close), 1) OVER (PARTITION BY symbol ORDER BY open_time) AS prev_close FROM raw_ohlcv_1m WHERE open_time >= now() - INTERVAL 24 HOUR ) ), drawdowns AS ( SELECT symbol, min(if(running_peak = 0, 0, (close_price - running_peak) / running_peak)) AS max_drawdown FROM price_history GROUP BY symbol ), risk AS ( SELECT symbol, stddevSamp(return_1m) AS volatility_1m, avg(return_1m) AS avg_return_1m, if(stddevSamp(return_1m) IS NULL OR stddevSamp(return_1m) = 0, NULL, sqrt(1440.0) * avg(return_1m) / stddevSamp(return_1m)) AS sharpe_24h FROM returns GROUP BY symbol ) SELECT risk.symbol, volatility_1m, abs(max_drawdown) AS max_drawdown, sharpe_24h FROM risk LEFT JOIN drawdowns USING (symbol) ORDER BY risk.symbol",
+          "refId": "A"
+        }
+      ],
+      "title": "Volatility / Max Drawdown / Sharpe Per Coin (24h)",
+      "type": "table"
     }
   ],
   "refresh": "30s",
@@ -844,6 +938,6 @@
   "timezone": "browser",
   "title": "Streaming Market Analytics",
   "uid": "streaming-market-analytics",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
