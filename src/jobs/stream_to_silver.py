@@ -16,6 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional in Spark runtime imag
         return False
 from pyspark.sql import Column, DataFrame, SparkSession
 from pyspark.sql.functions import (
+    avg as spark_avg,
     col,
     current_timestamp,
     date_format,
@@ -352,15 +353,19 @@ def write_cleaned_batch(
     )
     insert_dataframe_into_clickhouse(clickhouse_ready_df, clickhouse_url, database, table)
 
-    latest_open_time = batch_df.agg(spark_max("open_time_ts").alias("latest_open_time")).collect()[0]["latest_open_time"]
-    lag_seconds = 0.0
-    if latest_open_time is not None:
-        lag_seconds = max(
-            0.0,
-            (
-                datetime.now(tz=timezone.utc) - latest_open_time.replace(tzinfo=timezone.utc)
-            ).total_seconds(),
+    latency_row = (
+        batch_df.withColumn(
+            "processing_latency_seconds",
+            expr("CAST(processed_at AS DOUBLE) - CAST(kinesis_arrival_timestamp AS DOUBLE)"),
         )
+        .agg(
+            spark_max("processing_latency_seconds").alias("max_processing_latency_seconds"),
+            spark_avg("processing_latency_seconds").alias("avg_processing_latency_seconds"),
+        )
+        .collect()[0]
+    )
+    lag_seconds = float(latency_row["max_processing_latency_seconds"] or 0.0)
+    avg_lag_seconds = float(latency_row["avg_processing_latency_seconds"] or 0.0)
 
     metric_rows = [
         build_metric_row(
@@ -377,7 +382,7 @@ def write_cleaned_batch(
             unit="seconds",
             job_name=job_name,
             run_id=run_id,
-            details=f"batch_id={batch_id}",
+            details=f"batch_id={batch_id};basis=processed_at_minus_kinesis_arrival;avg_seconds={avg_lag_seconds:.6f}",
         ),
     ]
     insert_metric_rows(clickhouse_url, database, metrics_table, metric_rows)
