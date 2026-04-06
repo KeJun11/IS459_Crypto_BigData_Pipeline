@@ -777,7 +777,11 @@
         "uid": "clickhouse"
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
         "overrides": []
       },
       "gridPos": {
@@ -788,17 +792,23 @@
       },
       "id": 11,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": true,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+        "barRadius": 0,
+        "barWidth": 0.72,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
-        "showHeader": true
+        "orientation": "vertical",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "pluginVersion": "11.1.0",
       "targets": [
@@ -816,7 +826,7 @@
         }
       ],
       "title": "Total Trading Volume Per Coin (24h)",
-      "type": "table"
+      "type": "barchart"
     },
     {
       "datasource": {
@@ -824,7 +834,11 @@
         "uid": "clickhouse"
       },
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
         "overrides": []
       },
       "gridPos": {
@@ -835,17 +849,23 @@
       },
       "id": 12,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": true,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+        "barRadius": 0,
+        "barWidth": 0.72,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showHeader": true
+        "orientation": "vertical",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "pluginVersion": "11.1.0",
       "targets": [
@@ -863,7 +883,7 @@
         }
       ],
       "title": "Volatility / Max Drawdown / Sharpe Per Coin (24h)",
-      "type": "table"
+      "type": "barchart"
     }
   ],
   "refresh": "30s",
